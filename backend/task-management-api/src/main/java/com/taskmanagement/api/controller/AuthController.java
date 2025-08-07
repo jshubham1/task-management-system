@@ -83,4 +83,21 @@ public class AuthController {
         UserResponse userResponse = authService.getCurrentUser(currentUser.getId());
         return ResponseEntity.ok(userResponse);
     }
+
+    @GetMapping("/me/optional")
+    @Operation(
+            summary = "Get current user (optional authentication)",
+            description = "Returns user info if valid authentication is provided, otherwise returns unauthenticated status",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Always returns 200 with authentication status"),
+                    @ApiResponse(responseCode = "500", description = "Server error")
+            }
+    )
+    public ResponseEntity<OptionalAuthResponse> getCurrentUserOptional(HttpServletRequest request) {
+        String authorizationHeader = request.getHeader("Authorization");
+        OptionalAuthResponse response = authService.getCurrentUserOptional(authorizationHeader);
+        return ResponseEntity.ok(response);
+    }
+
+
 }

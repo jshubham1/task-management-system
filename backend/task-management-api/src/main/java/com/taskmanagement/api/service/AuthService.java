@@ -13,6 +13,9 @@ import com.taskmanagement.api.exception.UserNotFoundException;
 import com.taskmanagement.api.repository.UserRepository;
 import com.taskmanagement.api.repository.UserSessionRepository;
 import com.taskmanagement.api.security.JwtTokenProvider;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -188,5 +193,132 @@ public class AuthService {
         userRepository.save(user);
 
         return UserResponse.fromEntity(user);
+    }
+
+    // Add this method to your existing AuthService class
+    @Transactional
+    public OptionalAuthResponse getCurrentUserOptional(String authorizationHeader) {
+        String clientInfo = getCurrentClientInfo();
+
+        try {
+            String jwt = extractJwtFromAuthHeader(authorizationHeader);
+
+            if (!StringUtils.hasText(jwt)) {
+                log.debug("No JWT token found in optional auth request from: {}", clientInfo);
+                return OptionalAuthResponse.unauthenticated("No authorization token provided");
+            }
+
+            // Validate token structure and signature
+            if (!jwtTokenProvider.validateToken(jwt)) {
+                log.debug("Invalid JWT token in optional auth request from: {}", clientInfo);
+                return OptionalAuthResponse.unauthenticated("Invalid or expired token");
+            }
+
+            // Check token type (should be access token, not refresh token)
+            String tokenType = jwtTokenProvider.getTokenType(jwt);
+            if (!"access".equals(tokenType)) {
+                log.debug("Wrong token type '{}' in optional auth request from: {}", tokenType, clientInfo);
+                return OptionalAuthResponse.unauthenticated("Invalid token type");
+            }
+
+            // Extract user information
+            String username = jwtTokenProvider.getUsernameFromToken(jwt);
+            UUID userId = jwtTokenProvider.getUserIdFromToken(jwt);
+
+            log.debug("Processing optional auth for user: {} (ID: {}) from: {}", username, userId, clientInfo);
+
+            // Find user by ID for better performance
+            User user = userRepository.findById(userId)
+                    .orElse(null);
+
+            if (user == null) {
+                log.warn("User not found for ID: {} from token, client: {}", userId, clientInfo);
+                return OptionalAuthResponse.unauthenticated("User not found");
+            }
+
+            // Verify username matches (security check)
+            if (!username.equals(user.getUsername())) {
+                log.error("Username mismatch in token. Expected: {}, Got: {} from client: {}",
+                        user.getUsername(), username, clientInfo);
+                return OptionalAuthResponse.unauthenticated("Token validation failed");
+            }
+
+            // Check user status
+            if (!user.getIsActive()) {
+                log.warn("Inactive user {} attempting optional access from: {}", username, clientInfo);
+                return OptionalAuthResponse.unauthenticated("User account is inactive");
+            }
+
+            // Update last login time (optional - only if you want to track this)
+            updateUserLastAccess(user);
+
+            // Create response
+            UserResponse userResponse = UserResponse.fromEntity(user);
+
+            log.debug("Successfully processed optional auth for user: {} from: {}", username, clientInfo);
+
+            return OptionalAuthResponse.authenticated(userResponse);
+
+        } catch (ExpiredJwtException ex) {
+            log.debug("Expired JWT token in optional auth request from: {} - {}", clientInfo, ex.getMessage());
+            return OptionalAuthResponse.unauthenticated("Token has expired");
+        } catch (UnsupportedJwtException ex) {
+            log.debug("Unsupported JWT token in optional auth request from: {} - {}", clientInfo, ex.getMessage());
+            return OptionalAuthResponse.unauthenticated("Unsupported token format");
+        } catch (MalformedJwtException ex) {
+            log.debug("Malformed JWT token in optional auth request from: {} - {}", clientInfo, ex.getMessage());
+            return OptionalAuthResponse.unauthenticated("Invalid token format");
+        } catch (IllegalArgumentException ex) {
+            log.debug("Invalid JWT arguments in optional auth request from: {} - {}", clientInfo, ex.getMessage());
+            return OptionalAuthResponse.unauthenticated("Invalid token data");
+        } catch (Exception ex) {
+            log.error("Unexpected error during optional authentication check from: {} - {}",
+                    clientInfo, ex.getMessage(), ex);
+            return OptionalAuthResponse.unauthenticated("Authentication check failed");
+        }
+    }
+
+    private String extractJwtFromAuthHeader(String authorizationHeader) {
+        if (StringUtils.hasText(authorizationHeader) && authorizationHeader.startsWith("Bearer ")) {
+            String token = authorizationHeader.substring(7).trim();
+            return StringUtils.hasText(token) ? token : null;
+        }
+        return null;
+    }
+
+    private String getCurrentClientInfo() {
+        // Get client info from request context if available
+        try {
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
+                    .getRequest();
+            String userAgent = request.getHeader("User-Agent");
+            String clientIp = getClientIpAddress(request);
+            return String.format("IP: %s, UA: %s", clientIp, userAgent);
+        } catch (Exception e) {
+            return "Unknown client";
+        }
+    }
+
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (StringUtils.hasText(xRealIp)) {
+            return xRealIp;
+        }
+
+        return request.getRemoteAddr();
+    }
+
+    private void updateUserLastAccess(User user) {
+        // Only update if last access was more than 5 minutes ago to avoid too frequent updates
+        if (user.getLastLoginAt() == null ||
+                user.getLastLoginAt().isBefore(LocalDateTime.now().minusMinutes(5))) {
+            user.setLastLoginAt(LocalDateTime.now());
+            userRepository.save(user);
+        }
     }
 }
