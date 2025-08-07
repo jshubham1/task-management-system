@@ -1,0 +1,30 @@
+{
+  "name": "Task Management - Local",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "enabled": true
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "current_user_id",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "created_task_id",
+      "value": "",
+      "enabled": true
+    }
+  ]
+}

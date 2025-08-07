@@ -38,4 +38,30 @@ jwt:
 
 app:
   cors:
-    allowed-origins: http://localhost:4200
+    allowed-origins: http://localhost:3000
+
+# Springdoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    try-it-out-enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    disable-swagger-default-url: true
+  show-actuator: false
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+# Application Info
+info:
+  app:
+    name: Task Management System
+    description: A comprehensive task management system
+    version: 1.0.0
+    encoding: UTF-8
+    java:
+      version: 17

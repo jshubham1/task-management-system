@@ -121,6 +121,8 @@ public class TaskService {
     }
 
     public TaskResponse getTask(UUID id, UUID taskId) {
-        return null;
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
+        return TaskResponse.fromEntity(task);
     }
 }

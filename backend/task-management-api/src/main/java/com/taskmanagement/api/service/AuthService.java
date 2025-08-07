@@ -136,7 +136,7 @@ public class AuthService {
         User savedUser = userRepository.save(user);
 
         // Send verification email
-        emailService.sendVerificationEmail(savedUser);
+        //emailService.sendVerificationEmail(savedUser);
 
         return AuthResponse.builder()
                 .message("Registration successful. Please check your email for verification.")
@@ -167,5 +167,26 @@ public class AuthService {
                 .user(UserResponse.fromEntity(user))
                 .expiresIn(jwtTokenProvider.getAccessTokenExpiration())
                 .build();
+    }
+
+    @Transactional
+    public UserResponse getCurrentUser(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+        // Additional checks
+        if (!user.getIsActive()) {
+            throw new AccountInactiveException("User account is inactive");
+        }
+
+        if (!user.getEmailVerified()) {
+            log.warn("Unverified user accessing /me endpoint: {}", user.getEmail());
+        }
+
+        // Update last access time (optional)
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        return UserResponse.fromEntity(user);
     }
 }
