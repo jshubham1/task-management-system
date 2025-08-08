@@ -166,7 +166,7 @@ public class DashboardService {
             UUID taskId = (UUID) data[0];
             String taskTitle = (String) data[1];
             String activityType = (String) data[2];
-            LocalDateTime timestamp = (LocalDateTime) data[3];
+            LocalDateTime timestamp = convertToLocalDateTime(data[3]); // Use utility method
             String oldValue = (String) data[4];
             String newValue = (String) data[5];
 
@@ -197,5 +197,22 @@ public class DashboardService {
                 .limit(limit)
                 .collect(Collectors.toList());
     }
+
+    // Add this utility method to your DashboardService class
+    private LocalDateTime convertToLocalDateTime(Object timestampObject) {
+        if (timestampObject == null) {
+            return null;
+        }
+
+        if (timestampObject instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) timestampObject).toLocalDateTime();
+        } else if (timestampObject instanceof java.time.LocalDateTime) {
+            return (java.time.LocalDateTime) timestampObject;
+        } else {
+            log.error("Unsupported timestamp type: {}", timestampObject.getClass());
+            throw new IllegalArgumentException("Cannot convert " + timestampObject.getClass() + " to LocalDateTime");
+        }
+    }
+
 
 }

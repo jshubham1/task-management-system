@@ -118,15 +118,15 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
     // Projects created by month
     @Query(value = """
-            SELECT 
-                TO_CHAR(created_at, 'YYYY-MM') as month,
-                COUNT(*) as count
-            FROM projects 
-            WHERE user_id = :userId::uuid 
-                AND created_at >= (NOW() - (:months::text || ' months')::interval)
-            GROUP BY TO_CHAR(created_at, 'YYYY-MM')
-            ORDER BY month DESC
-            """, nativeQuery = true)
+                SELECT 
+                    TO_CHAR(created_at, 'YYYY-MM') as month,
+                    COUNT(*) as count
+                FROM projects 
+            WHERE user_id = :userId 
+                AND created_at >= (NOW() - (:months || ' months')::interval)
+                GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+                ORDER BY month DESC
+                """, nativeQuery = true)
     List<Object[]> getProjectsCreatedByMonthRaw(@Param("userId") UUID userId, @Param("months") int months);
 
     default Map<String, Integer> getProjectsCreatedByMonth(UUID userId, int months) {
