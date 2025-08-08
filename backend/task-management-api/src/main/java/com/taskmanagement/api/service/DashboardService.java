@@ -183,7 +183,7 @@ public class DashboardService {
             UUID projectId = (UUID) data[0];
             String projectName = (String) data[1];
             String activityType = (String) data[2];
-            LocalDateTime timestamp = (LocalDateTime) data[3];
+            LocalDateTime timestamp = convertToLocalDateTime(data[3]); // Use utility method
 
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("projectId", projectId.toString());

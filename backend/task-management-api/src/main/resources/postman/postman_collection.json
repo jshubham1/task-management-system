@@ -1,8 +1,8 @@
 {
   "info": {
     "name": "Task Management System API",
-    "description": "Complete API collection for Task Management System with authentication and task management endpoints",
-    "version": "1.0.0",
+    "description": "Complete API collection for Task Management System with authentication, task management, project management, and dashboard endpoints",
+    "version": "2.0.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -37,7 +37,14 @@
           "}",
           "if (!pm.environment.get('refresh_token')) {",
           "    pm.environment.set('refresh_token', '');",
-          "}"
+          "}",
+          "",
+          "// Helper function to check authentication",
+          "pm.globals.set('checkAuth', function() {",
+          "    if (!pm.environment.get('access_token')) {",
+          "        throw new Error('Please login first to get access token');",
+          "    }",
+          "});"
         ]
       }
     }

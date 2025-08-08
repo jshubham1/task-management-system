@@ -1,0 +1,1340 @@
+{
+  "info": {
+    "name": "Task Management System API",
+    "description": "Complete API collection for Task Management System with authentication, task management, project management, and dashboard endpoints",
+    "version": "2.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set default environment variables if not set",
+          "if (!pm.environment.get('base_url')) {",
+          "    pm.environment.set('base_url', 'http://localhost:8080');",
+          "}",
+          "if (!pm.environment.get('access_token')) {",
+          "    pm.environment.set('access_token', '');",
+          "}",
+          "if (!pm.environment.get('refresh_token')) {",
+          "    pm.environment.set('refresh_token', '');",
+          "}",
+          "",
+          "// Helper function to check authentication",
+          "pm.globals.set('checkAuth', function() {",
+          "    if (!pm.environment.get('access_token')) {",
+          "        throw new Error('Please login first to get access token');",
+          "    }",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has userId', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('userId');",
+                  "    pm.environment.set('user_id', responseJson.userId);",
+                  "});",
+                  "",
+                  "pm.test('Success is true', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"john_doe_{{$timestamp}}\",\n  \"email\": \"john.{{$timestamp}}@example.com\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has tokens', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('accessToken');",
+                  "    pm.expect(responseJson).to.have.property('refreshToken');",
+                  "    ",
+                  "    // Store tokens for subsequent requests",
+                  "    pm.environment.set('access_token', responseJson.accessToken);",
+                  "    pm.environment.set('refresh_token', responseJson.refreshToken);",
+                  "});",
+                  "",
+                  "pm.test('Response has user info', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('user');",
+                  "    pm.expect(responseJson.user).to.have.property('id');",
+                  "    pm.environment.set('current_user_id', responseJson.user.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"rememberMe\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has user information', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.expect(responseJson).to.have.property('username');",
+                  "    pm.expect(responseJson).to.have.property('email');",
+                  "    pm.expect(responseJson).to.have.property('firstName');",
+                  "    pm.expect(responseJson).to.have.property('lastName');",
+                  "    pm.expect(responseJson).to.have.property('fullName');",
+                  "});",
+                  "",
+                  "pm.test('User is active', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.isActive).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Current User (Optional Auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const statusCode = pm.response.code;",
+                  "",
+                  "if (statusCode === 200) {",
+                  "    pm.test('User authenticated successfully', function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson).to.have.property('authenticated');",
+                  "        pm.expect(responseJson.authenticated).to.be.true;",
+                  "        pm.expect(responseJson).to.have.property('user');",
+                  "    });",
+                  "} else if (statusCode === 401) {",
+                  "    pm.test('Unauthorized response handled correctly', function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson).to.have.property('authenticated');",
+                  "        pm.expect(responseJson.authenticated).to.be.false;",
+                  "    });",
+                  "} else if (statusCode === 403) {",
+                  "    pm.test('Forbidden response handled correctly', function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson).to.have.property('authenticated');",
+                  "        pm.expect(responseJson.authenticated).to.be.false;",
+                  "    });",
+                  "}",
+                  "",
+                  "pm.test('Response has authentication status', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('authenticated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me/optional",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me",
+                "optional"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has new tokens', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('accessToken');",
+                  "    pm.expect(responseJson).to.have.property('refreshToken');",
+                  "    ",
+                  "    // Update stored tokens",
+                  "    pm.environment.set('access_token', responseJson.accessToken);",
+                  "    pm.environment.set('refresh_token', responseJson.refreshToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Logout message received', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.message).to.include('Logged out successfully');",
+                  "});",
+                  "",
+                  "// Clear tokens after logout",
+                  "pm.environment.unset('access_token');",
+                  "pm.environment.unset('refresh_token');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Get All Projects",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Project has required fields', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.length > 0) {",
+                  "        const project = responseJson[0];",
+                  "        pm.expect(project).to.have.property('id');",
+                  "        pm.expect(project).to.have.property('name');",
+                  "        pm.expect(project).to.have.property('createdAt');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/projects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "projects"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Project Summaries",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Project summary has required fields', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.length > 0) {",
+                  "        const summary = responseJson[0];",
+                  "        pm.expect(summary).to.have.property('id');",
+                  "        pm.expect(summary).to.have.property('name');",
+                  "        pm.expect(summary).to.have.property('totalTasks');",
+                  "        pm.expect(summary).to.have.property('completedTasks');",
+                  "        pm.expect(summary).to.have.property('progress');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/projects/summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has project id', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.environment.set('created_project_id', responseJson.id);",
+                  "});",
+                  "",
+                  "pm.test('Project name matches request', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.name).to.equal('Website Redesign Project');",
+                  "});",
+                  "",
+                  "pm.test('Project has default color', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('color');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Website Redesign Project\",\n  \"description\": \"Complete redesign of the company website with modern UI/UX\",\n  \"color\": \"#4CAF50\",\n  \"deadline\": \"2025-09-30T23:59:59\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/projects",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "projects"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Project by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has project details', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.expect(responseJson).to.have.property('name');",
+                  "    pm.expect(responseJson).to.have.property('description');",
+                  "    pm.expect(responseJson).to.have.property('color');",
+                  "    pm.expect(responseJson).to.have.property('createdAt');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/projects/{{created_project_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{created_project_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Project name updated', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.name).to.equal('Updated Website Redesign');",
+                  "});",
+                  "",
+                  "pm.test('Project color updated', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.color).to.equal('#FF5722');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Website Redesign\",\n  \"description\": \"Complete redesign of the company website with modern UI/UX and enhanced functionality\",\n  \"color\": \"#FF5722\",\n  \"deadline\": \"2025-10-31T23:59:59\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/projects/{{created_project_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{created_project_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Projects",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Search results contain query term', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.length > 0) {",
+                  "        const project = responseJson[0];",
+                  "        const searchTerm = 'website';",
+                  "        const matchFound = project.name.toLowerCase().includes(searchTerm) || ",
+                  "                          (project.description && project.description.toLowerCase().includes(searchTerm));",
+                  "        pm.expect(matchFound).to.be.true;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/projects/search?query=website",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "website",
+                  "description": "Search term for project name or description"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Upcoming Deadlines",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is an array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Projects have deadlines', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    responseJson.forEach(project => {",
+                  "        pm.expect(project).to.have.property('deadline');",
+                  "        pm.expect(project.deadline).to.not.be.null;",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/projects/upcoming-deadlines?days=30",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "upcoming-deadlines"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30",
+                  "description": "Number of days ahead to check for deadlines"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Delete message received', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.message).to.include('Project deleted successfully');",
+                  "});",
+                  "",
+                  "pm.test('Operation success', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/projects/{{created_project_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{created_project_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Get All Tasks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has content array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('content');",
+                  "    pm.expect(responseJson.content).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Response has pagination info', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('totalElements');",
+                  "    pm.expect(responseJson).to.have.property('totalPages');",
+                  "    pm.expect(responseJson).to.have.property('size');",
+                  "    pm.expect(responseJson).to.have.property('number');",
+                  "});",
+                  "",
+                  "pm.test('Task has enhanced fields', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.content.length > 0) {",
+                  "        const task = responseJson.content[0];",
+                  "        pm.expect(task).to.have.property('isOverdue');",
+                  "        pm.expect(task).to.have.property('isDueToday');",
+                  "        pm.expect(task).to.have.property('projectName');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tasks?page=0&size=20&sortBy=createdAt&sortDirection=desc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Tasks with Advanced Filters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Filtered results match criteria', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    responseJson.content.forEach(task => {",
+                  "        if (task.status) pm.expect(task.status).to.equal('TODO');",
+                  "        if (task.priority) pm.expect(task.priority).to.equal('HIGH');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tasks?status=TODO&priority=HIGH&search=important&projectId={{created_project_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "TODO"
+                },
+                {
+                  "key": "priority",
+                  "value": "HIGH"
+                },
+                {
+                  "key": "search",
+                  "value": "important"
+                },
+                {
+                  "key": "projectId",
+                  "value": "{{created_project_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Task with Project Assignment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has task id', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.environment.set('created_task_id', responseJson.id);",
+                  "});",
+                  "",
+                  "pm.test('Task is assigned to project', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('projectId');",
+                  "    pm.expect(responseJson).to.have.property('projectName');",
+                  "});",
+                  "",
+                  "pm.test('Task has enhanced metadata', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('isOverdue');",
+                  "    pm.expect(responseJson).to.have.property('isDueToday');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Design homepage mockup\",\n  \"description\": \"Create detailed mockups for the new homepage design including desktop and mobile versions\",\n  \"priority\": \"HIGH\",\n  \"dueDate\": \"2025-08-25T17:00:00\",\n  \"projectId\": \"{{created_project_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tasks",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Task by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has complete task details', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('id');",
+                  "    pm.expect(responseJson).to.have.property('title');",
+                  "    pm.expect(responseJson).to.have.property('status');",
+                  "    pm.expect(responseJson).to.have.property('priority');",
+                  "    pm.expect(responseJson).to.have.property('createdAt');",
+                  "    pm.expect(responseJson).to.have.property('updatedAt');",
+                  "});",
+                  "",
+                  "pm.test('Task has project information', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.projectId) {",
+                  "        pm.expect(responseJson).to.have.property('projectName');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tasks/{{created_task_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{created_task_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Task status updated', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.status).to.equal('IN_PROGRESS');",
+                  "});",
+                  "",
+                  "pm.test('Updated timestamp is recent', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const updatedAt = new Date(responseJson.updatedAt);",
+                  "    const now = new Date();",
+                  "    const timeDiff = now - updatedAt;",
+                  "    pm.expect(timeDiff).to.be.below(60000); // Within 1 minute",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Design homepage mockup - Updated\",\n  \"description\": \"Create detailed mockups for the new homepage design including desktop, tablet, and mobile versions\",\n  \"status\": \"IN_PROGRESS\",\n  \"priority\": \"MEDIUM\",\n  \"dueDate\": \"2025-08-30T17:00:00\",\n  \"projectId\": \"{{created_project_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tasks/{{created_task_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{created_task_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Delete message received', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.message).to.include('Task deleted successfully');",
+                  "});",
+                  "",
+                  "pm.test('Operation success', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/tasks/{{created_task_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{created_task_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "default"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "summary"
+              ]
+            },
+            "description": "Retrieves overall dashboard statistics including task and project counts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has required dashboard fields', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('totalTasks');",
+                  "    pm.expect(jsonData).to.have.property('completedTasks');",
+                  "    pm.expect(jsonData).to.have.property('pendingTasks');",
+                  "    pm.expect(jsonData).to.have.property('overdueTasks');",
+                  "    pm.expect(jsonData).to.have.property('totalProjects');",
+                  "    pm.expect(jsonData).to.have.property('completionRate');",
+                  "    pm.expect(jsonData).to.have.property('generatedAt');",
+                  "});",
+                  "",
+                  "pm.test('Completion rate is valid', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.completionRate).to.be.a('number');",
+                  "    pm.expect(jsonData.completionRate).to.be.within(0, 100);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Task Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "default"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/task-stats?days=30",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "task-stats"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "30",
+                  "description": "Number of days to include in statistics (default: 30)"
+                }
+              ]
+            },
+            "description": "Retrieves detailed task statistics for the specified period"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has task statistics', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('statusCounts');",
+                  "    pm.expect(jsonData).to.have.property('priorityCounts');",
+                  "    pm.expect(jsonData).to.have.property('dailyStats');",
+                  "    pm.expect(jsonData).to.have.property('periodDays');",
+                  "});",
+                  "",
+                  "pm.test('Daily stats is an array', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.dailyStats).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Project Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "default"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/project-stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "project-stats"
+              ]
+            },
+            "description": "Retrieves project progress statistics"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has project statistics', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('totalProjects');",
+                  "    pm.expect(jsonData).to.have.property('activeProjects');",
+                  "    pm.expect(jsonData).to.have.property('completedProjects');",
+                  "    pm.expect(jsonData).to.have.property('overdueProjects');",
+                  "    pm.expect(jsonData).to.have.property('averageCompletionRate');",
+                  "    pm.expect(jsonData).to.have.property('projectProgress');",
+                  "});",
+                  "",
+                  "pm.test('Project progress is an array', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.projectProgress).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Recent Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "default"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/recent-activity?limit=15",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "recent-activity"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "15",
+                  "description": "Maximum number of activities to return (default: 10)"
+                }
+              ]
+            },
+            "description": "Retrieves recent user activities across tasks and projects"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is activities array', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Activity has required fields', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.length > 0) {",
+                  "        const activity = jsonData[0];",
+                  "        pm.expect(activity).to.have.property('id');",
+                  "        pm.expect(activity).to.have.property('type');",
+                  "        pm.expect(activity).to.have.property('title');",
+                  "        pm.expect(activity).to.have.property('description');",
+                  "        pm.expect(activity).to.have.property('timestamp');",
+                  "        pm.expect(activity).to.have.property('timeAgo');",
+                  "        pm.expect(activity).to.have.property('entityType');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
