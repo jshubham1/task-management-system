@@ -20,6 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -203,22 +204,23 @@ public class AuthService {
         try {
             String jwt = extractJwtFromAuthHeader(authorizationHeader);
 
+            // No token provided
             if (!StringUtils.hasText(jwt)) {
                 log.debug("No JWT token found in optional auth request from: {}", clientInfo);
-                return OptionalAuthResponse.unauthenticated("No authorization token provided");
+                return OptionalAuthResponse.unauthorized("Authorization header missing or invalid format");
             }
 
-            // Validate token structure and signature
+            // Invalid token structure/signature
             if (!jwtTokenProvider.validateToken(jwt)) {
                 log.debug("Invalid JWT token in optional auth request from: {}", clientInfo);
-                return OptionalAuthResponse.unauthenticated("Invalid or expired token");
+                return OptionalAuthResponse.unauthorized("Invalid or expired token");
             }
 
             // Check token type (should be access token, not refresh token)
             String tokenType = jwtTokenProvider.getTokenType(jwt);
             if (!"access".equals(tokenType)) {
                 log.debug("Wrong token type '{}' in optional auth request from: {}", tokenType, clientInfo);
-                return OptionalAuthResponse.unauthenticated("Invalid token type");
+                return OptionalAuthResponse.badRequest("Invalid token type - expected access token");
             }
 
             // Extract user information
@@ -227,32 +229,35 @@ public class AuthService {
 
             log.debug("Processing optional auth for user: {} (ID: {}) from: {}", username, userId, clientInfo);
 
-            // Find user by ID for better performance
+            // Find user by ID
             User user = userRepository.findById(userId)
                     .orElse(null);
 
             if (user == null) {
                 log.warn("User not found for ID: {} from token, client: {}", userId, clientInfo);
-                return OptionalAuthResponse.unauthenticated("User not found");
+                return OptionalAuthResponse.notFound("User account not found");
             }
 
             // Verify username matches (security check)
             if (!username.equals(user.getUsername())) {
                 log.error("Username mismatch in token. Expected: {}, Got: {} from client: {}",
                         user.getUsername(), username, clientInfo);
-                return OptionalAuthResponse.unauthenticated("Token validation failed");
+                return OptionalAuthResponse.unauthorized("Token validation failed");
             }
 
-            // Check user status
+            // Check user account status
             if (!user.getIsActive()) {
                 log.warn("Inactive user {} attempting optional access from: {}", username, clientInfo);
-                return OptionalAuthResponse.unauthenticated("User account is inactive");
+                return OptionalAuthResponse.forbidden("User account is inactive");
             }
 
-            // Update last login time (optional - only if you want to track this)
-            updateUserLastAccess(user);
+            if (!user.getEmailVerified()) {
+                log.warn("Unverified user {} attempting optional access from: {}", username, clientInfo);
+                return OptionalAuthResponse.forbidden("Email verification required");
+            }
 
-            // Create response
+            // Success - update last access and return user information
+            updateUserLastAccess(user);
             UserResponse userResponse = UserResponse.fromEntity(user);
 
             log.debug("Successfully processed optional auth for user: {} from: {}", username, clientInfo);
@@ -261,20 +266,26 @@ public class AuthService {
 
         } catch (ExpiredJwtException ex) {
             log.debug("Expired JWT token in optional auth request from: {} - {}", clientInfo, ex.getMessage());
-            return OptionalAuthResponse.unauthenticated("Token has expired");
+            return OptionalAuthResponse.unauthorized("Token has expired");
         } catch (UnsupportedJwtException ex) {
             log.debug("Unsupported JWT token in optional auth request from: {} - {}", clientInfo, ex.getMessage());
-            return OptionalAuthResponse.unauthenticated("Unsupported token format");
+            return OptionalAuthResponse.badRequest("Unsupported token format");
         } catch (MalformedJwtException ex) {
             log.debug("Malformed JWT token in optional auth request from: {} - {}", clientInfo, ex.getMessage());
-            return OptionalAuthResponse.unauthenticated("Invalid token format");
+            return OptionalAuthResponse.badRequest("Invalid token format");
         } catch (IllegalArgumentException ex) {
             log.debug("Invalid JWT arguments in optional auth request from: {} - {}", clientInfo, ex.getMessage());
-            return OptionalAuthResponse.unauthenticated("Invalid token data");
+            return OptionalAuthResponse.badRequest("Invalid token data");
         } catch (Exception ex) {
             log.error("Unexpected error during optional authentication check from: {} - {}",
                     clientInfo, ex.getMessage(), ex);
-            return OptionalAuthResponse.unauthenticated("Authentication check failed");
+            // Return 500 for unexpected errors
+            return OptionalAuthResponse.builder()
+                    .authenticated(false)
+                    .user(null)
+                    .message("Internal server error during authentication check")
+                    .httpStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .build();
         }
     }
 

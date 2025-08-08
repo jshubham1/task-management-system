@@ -87,16 +87,22 @@ public class AuthController {
     @GetMapping("/me/optional")
     @Operation(
             summary = "Get current user (optional authentication)",
-            description = "Returns user info if valid authentication is provided, otherwise returns unauthenticated status",
+            description = "Returns user info if valid authentication is provided, otherwise returns appropriate error status",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Always returns 200 with authentication status"),
-                    @ApiResponse(responseCode = "500", description = "Server error")
+                    @ApiResponse(responseCode = "200", description = "User authenticated successfully"),
+                    @ApiResponse(responseCode = "400", description = "Bad request - invalid token format"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized - missing, invalid, or expired token"),
+                    @ApiResponse(responseCode = "403", description = "Forbidden - valid token but account issues"),
+                    @ApiResponse(responseCode = "404", description = "Not found - user account not found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
             }
     )
     public ResponseEntity<OptionalAuthResponse> getCurrentUserOptional(HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
         OptionalAuthResponse response = authService.getCurrentUserOptional(authorizationHeader);
-        return ResponseEntity.ok(response);
+
+        // Return appropriate HTTP status based on the response
+        return ResponseEntity.status(response.getHttpStatus()).body(response);
     }
 
 

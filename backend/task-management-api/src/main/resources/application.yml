@@ -1,15 +1,20 @@
 spring:
   application:
     name: TaskManagementAPI
+  threads:
+    virtual:
+      enabled: true  # Enable virtual threads for better performance
   datasource:
     url: jdbc:postgresql://localhost:5432/task_management
     username: task_user
     password: t#sk_user_123
-    driver-class-name: org.postgresql.Driver
-
+    hikari:
+      maximum-pool-size: 50  # Can increase with virtual threads
+      minimum-idle: 10
+      connection-timeout: 30000
   jpa:
     hibernate:
-      ddl-auto: create-drop # Use 'update' in production
+      ddl-auto: update # Use 'update' in production
     show-sql: true
     properties:
       hibernate:
@@ -65,3 +70,10 @@ info:
     encoding: UTF-8
     java:
       version: 17
+
+# JVM optimization for JDK 21
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,threaddump
