@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('USER')")
 @CrossOrigin(origins = "${app.cors.allowed-origins}")
+@Slf4j
 @Tag(name = "Tasks", description = "Task management endpoints")
 public class TaskController {
     private final TaskService taskService;
@@ -53,6 +55,9 @@ public class TaskController {
             @Parameter(description = "Filter by task priority") @RequestParam(required = false) TaskPriority priority,
             @Parameter(description = "Filter by project ID") @RequestParam(required = false) UUID projectId,
             @Parameter(description = "Search text in title/description") @RequestParam(required = false) String search) {
+
+        log.debug("GET /api/tasks - userId={} page={} size={} sortBy={} sortDirection={} status={} priority={} projectId={} search={}",
+                currentUser.getId(), page, size, sortBy, sortDirection, status, priority, projectId, search);
 
         TaskFilterRequest filter = TaskFilterRequest.builder()
                 .page(page)
@@ -79,6 +84,7 @@ public class TaskController {
     public ResponseEntity<TaskResponse> getTask(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Task ID") @PathVariable UUID taskId) {
+        log.debug("GET /api/tasks/{} - userId={}", taskId, currentUser.getId());
         TaskResponse task = taskService.getTask(currentUser.getId(), taskId);
         return ResponseEntity.ok(task);
     }
@@ -93,6 +99,8 @@ public class TaskController {
     public ResponseEntity<TaskResponse> createTask(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody TaskCreateRequest request) {
+        log.info("POST /api/tasks - userId={} title={} priority={} projectId={}",
+                currentUser.getId(), request.getTitle(), request.getPriority(), request.getProjectId());
         TaskResponse task = taskService.createTask(currentUser.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(task);
     }
@@ -109,6 +117,8 @@ public class TaskController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Task ID") @PathVariable UUID taskId,
             @Valid @RequestBody TaskUpdateRequest request) {
+        log.info("PUT /api/tasks/{} - userId={} status={} priority={} dueDate={}",
+                taskId, currentUser.getId(), request.getStatus(), request.getPriority(), request.getDueDate());
         TaskResponse task = taskService.updateTask(currentUser.getId(), taskId, request);
         return ResponseEntity.ok(task);
     }
@@ -123,6 +133,7 @@ public class TaskController {
     public ResponseEntity<MessageResponse> deleteTask(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Task ID") @PathVariable UUID taskId) {
+        log.info("DELETE /api/tasks/{} - userId={}", taskId, currentUser.getId());
         taskService.deleteTask(currentUser.getId(), taskId);
         return ResponseEntity.ok(new MessageResponse("Task deleted successfully"));
     }

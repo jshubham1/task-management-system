@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,6 +27,7 @@ import java.util.List;
 @PreAuthorize("hasRole('USER')")
 @CrossOrigin(origins = "${app.cors.allowed-origins}")
 @Tag(name = "Dashboard", description = "Dashboard data and analytics endpoints")
+@Slf4j
 public class DashboardController {
 
     private final DashboardService dashboardService;
@@ -38,6 +40,7 @@ public class DashboardController {
     })
     public ResponseEntity<DashboardSummaryResponse> getDashboardSummary(
             @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.debug("GET /api/dashboard/summary - userId={}", currentUser.getId());
         DashboardSummaryResponse summary = dashboardService.getDashboardSummary(currentUser.getId());
         return ResponseEntity.ok(summary);
     }
@@ -51,6 +54,7 @@ public class DashboardController {
     public ResponseEntity<TaskStatsResponse> getTaskStatistics(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Number of days to include in stats") @RequestParam(defaultValue = "30") int days) {
+        log.debug("GET /api/dashboard/task-stats - userId={} days={}", currentUser.getId(), days);
         TaskStatsResponse stats = dashboardService.getTaskStatistics(currentUser.getId(), days);
         return ResponseEntity.ok(stats);
     }
@@ -63,6 +67,7 @@ public class DashboardController {
     })
     public ResponseEntity<ProjectStatsResponse> getProjectStatistics(
             @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.debug("GET /api/dashboard/project-stats - userId={}", currentUser.getId());
         ProjectStatsResponse stats = dashboardService.getProjectStatistics(currentUser.getId());
         return ResponseEntity.ok(stats);
     }
@@ -76,6 +81,7 @@ public class DashboardController {
     public ResponseEntity<List<ActivityResponse>> getRecentActivity(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Maximum number of activity items") @RequestParam(defaultValue = "10") int limit) {
+        log.debug("GET /api/dashboard/recent-activity - userId={} limit={}", currentUser.getId(), limit);
         List<ActivityResponse> activities = dashboardService.getRecentActivity(currentUser.getId(), limit);
         return ResponseEntity.ok(activities);
     }

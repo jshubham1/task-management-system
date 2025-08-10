@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @CrossOrigin(origins = "${app.cors.allowed-origins}")
 @Tag(name = "Authentication", description = "User authentication and authorization endpoints")
+@Slf4j
 public class AuthController {
     private final AuthService authService;
 
@@ -39,6 +41,7 @@ public class AuthController {
     )
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        log.info("POST /api/auth/register - email={} username={}", request.getEmail(), request.getUsername());
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -53,6 +56,7 @@ public class AuthController {
     )
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        log.info("POST /api/auth/login - email={}", request.getEmail());
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
@@ -68,6 +72,7 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        log.info("POST /api/auth/refresh - refreshToken (masked) present={}", request.getRefreshToken() != null);
         TokenResponse response = authService.refreshToken(request);
         return ResponseEntity.ok(response);
     }
@@ -83,6 +88,7 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
     public ResponseEntity<MessageResponse> logout(HttpServletRequest request) {
+        log.info("POST /api/auth/logout - remoteAddr={} userAgent={}", request.getRemoteAddr(), request.getHeader("User-Agent"));
         authService.logout(request);
         return ResponseEntity.ok(new MessageResponse("Logged out successfully"));
     }
@@ -99,6 +105,7 @@ public class AuthController {
             }
     )
     public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal UserPrincipal currentUser) {
+        log.debug("GET /api/auth/me - userId={}", currentUser.getId());
         UserResponse userResponse = authService.getCurrentUser(currentUser.getId());
         return ResponseEntity.ok(userResponse);
     }
@@ -117,6 +124,8 @@ public class AuthController {
             }
     )
     public ResponseEntity<OptionalAuthResponse> getCurrentUserOptional(@Parameter(description = "HTTP request with optional Authorization header") HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        log.debug("GET /api/auth/me/optional - hasAuthHeader={}", authHeader != null && !authHeader.isBlank());
         String authorizationHeader = request.getHeader("Authorization");
         OptionalAuthResponse response = authService.getCurrentUserOptional(authorizationHeader);
 

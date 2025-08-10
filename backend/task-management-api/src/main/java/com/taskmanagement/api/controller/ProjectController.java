@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +29,7 @@ import java.util.UUID;
 @PreAuthorize("hasRole('USER')")
 @CrossOrigin(origins = "${app.cors.allowed-origins}")
 @Tag(name = "Projects", description = "Project management endpoints")
+@Slf4j
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -43,6 +45,7 @@ public class ProjectController {
     )
     public ResponseEntity<List<ProjectResponse>> getUserProjects(
             @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.debug("GET /api/projects - userId={}", currentUser.getId());
         List<ProjectResponse> projects = projectService.getProjectsByUser(currentUser.getId());
         return ResponseEntity.ok(projects);
     }
@@ -58,6 +61,7 @@ public class ProjectController {
     )
     public ResponseEntity<List<ProjectSummaryResponse>> getProjectSummaries(
             @AuthenticationPrincipal UserPrincipal currentUser) {
+        log.debug("GET /api/projects/summary - userId={}", currentUser.getId());
         List<ProjectSummaryResponse> summaries = projectService.getProjectSummaries(currentUser.getId());
         return ResponseEntity.ok(summaries);
     }
@@ -76,6 +80,7 @@ public class ProjectController {
     public ResponseEntity<ProjectResponse> getProject(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Project ID") @PathVariable UUID projectId) {
+        log.debug("GET /api/projects/{} - userId={}", projectId, currentUser.getId());
         ProjectResponse project = projectService.getProject(currentUser.getId(), projectId);
         return ResponseEntity.ok(project);
     }
@@ -94,6 +99,7 @@ public class ProjectController {
     public ResponseEntity<ProjectResponse> createProject(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody ProjectCreateRequest request) {
+        log.info("POST /api/projects - userId={} name={}", currentUser.getId(), request.getName());
         ProjectResponse project = projectService.createProject(currentUser.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(project);
     }
@@ -115,6 +121,8 @@ public class ProjectController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Project ID") @PathVariable UUID projectId,
             @Valid @RequestBody ProjectUpdateRequest request) {
+        log.info("PUT /api/projects/{} - userId={} name={} descriptionUpdated={} ",
+                projectId, currentUser.getId(), request.getName(), request.getDescription() != null);
         ProjectResponse project = projectService.updateProject(currentUser.getId(), projectId, request);
         return ResponseEntity.ok(project);
     }
@@ -133,6 +141,7 @@ public class ProjectController {
     public ResponseEntity<MessageResponse> deleteProject(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Project ID") @PathVariable UUID projectId) {
+        log.info("DELETE /api/projects/{} - userId={}", projectId, currentUser.getId());
         projectService.deleteProject(currentUser.getId(), projectId);
         return ResponseEntity.ok(MessageResponse.success("Project deleted successfully"));
     }
@@ -149,6 +158,7 @@ public class ProjectController {
     public ResponseEntity<List<ProjectResponse>> searchProjects(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Search term") @RequestParam String query) {
+        log.debug("GET /api/projects/search - userId={} query={}", currentUser.getId(), query);
         List<ProjectResponse> projects = projectService.searchProjects(currentUser.getId(), query);
         return ResponseEntity.ok(projects);
     }
@@ -166,6 +176,7 @@ public class ProjectController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Parameter(description = "Number of days ahead to check")
             @RequestParam(defaultValue = "7") int days) {
+        log.debug("GET /api/projects/upcoming-deadlines - userId={} days={}", currentUser.getId(), days);
         List<ProjectResponse> projects = projectService.getUpcomingDeadlines(currentUser.getId(), days);
         return ResponseEntity.ok(projects);
     }
