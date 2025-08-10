@@ -11,7 +11,6 @@ import {
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/use-auth'
 import { User } from '@/types'
@@ -31,7 +30,7 @@ export function Header({ onMenuClick, user }: HeaderProps) {
     try {
       await logout()
       toast.success('Logged out successfully')
-    } catch (error) {
+    } catch {
       toast.error('Logout failed')
     }
   }

@@ -1,6 +1,8 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { 
   EllipsisHorizontalIcon,
   UserGroupIcon,
@@ -10,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { Menu } from '@headlessui/react'
 import { Card, CardContent } from '@/components/ui/card'
-import { ProjectResponse } from '@/types'
+import { ProjectResponse, ProjectSummaryResponse } from '@/types'
 import { formatDate, cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -19,9 +21,48 @@ interface ProjectGridProps {
   projects: ProjectResponse[]
   loading?: boolean
   onRefetch: () => void
+  summaries?: ProjectSummaryResponse[]
 }
 
-export function ProjectGrid({ projects, loading, onRefetch }: ProjectGridProps) {
+export function ProjectGrid({ projects, loading, onRefetch, summaries }: ProjectGridProps) {
+  // Fallback counts when summaries are missing
+  const [counts, setCounts] = useState<Record<string, { total: number; completed: number }>>({})
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    const needFallback = !summaries || summaries.length === 0
+    if (!needFallback || projects.length === 0) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const results = await Promise.allSettled(
+          projects.map(async (p) => {
+            // total tasks
+            const totalResp = await api.tasks.getAll({ projectId: p.id, page: 0, size: 1 })
+            // completed tasks
+            const doneResp = await api.tasks.getAll({ projectId: p.id, status: 'DONE', page: 0, size: 1 })
+            return { id: p.id, total: totalResp.data.totalElements, completed: doneResp.data.totalElements }
+          })
+        )
+        if (cancelled) return
+        const map: Record<string, { total: number; completed: number }> = {}
+        for (const r of results) {
+          if (r.status === 'fulfilled') {
+            map[r.value.id] = { total: r.value.total, completed: r.value.completed }
+          }
+        }
+        setCounts(map)
+      } catch (err) {
+        // Silently ignore; UI will show zeros
+        console.warn('Failed to fetch fallback project task counts', err)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [projects, summaries])
   const handleDelete = async (projectId: string, projectName: string) => {
     if (!confirm(`Are you sure you want to delete "${projectName}"? This will also delete all associated tasks.`)) {
       return
@@ -31,13 +72,18 @@ export function ProjectGrid({ projects, loading, onRefetch }: ProjectGridProps) 
       await api.projects.delete(projectId)
       toast.success('Project deleted successfully')
       onRefetch()
+      // Invalidate dashboard queries after project deletion
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['task-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] })
     } catch (error) {
       toast.error('Failed to delete project')
       console.error('Error deleting project:', error)
     }
   }
 
-  const handleEdit = (projectId: string) => {
+  const handleEdit = () => {
     // TODO: Open edit modal
     toast('Edit functionality coming soon')
   }
@@ -83,9 +129,13 @@ export function ProjectGrid({ projects, loading, onRefetch }: ProjectGridProps) 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {projects.map((project, index) => {
-        const completedTasks = 0
-        const totalTasks = 0
-        const progress = 0
+        const summary = summaries?.find((s) => s.id === project.id)
+        const fallback = counts[project.id]
+        const completedTasks = summary?.completedTasks ?? fallback?.completed ?? 0
+        const totalTasks = summary?.totalTasks ?? fallback?.total ?? 0
+        const progressRaw = summary?.progress ?? (totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0)
+        // Normalize: some backends return 0-1, others 0-100
+        const progress = progressRaw > 1 ? progressRaw : progressRaw * 100
 
         return (
           <motion.div
@@ -118,7 +168,7 @@ export function ProjectGrid({ projects, loading, onRefetch }: ProjectGridProps) 
                       <Menu.Item>
                         {({ active }) => (
                           <button
-                            onClick={() => handleEdit(project.id)}
+                            onClick={handleEdit}
                             className={cn(
                               active ? 'bg-gray-50' : '',
                               'flex w-full items-center px-3 py-2 text-sm text-gray-700'
@@ -158,7 +208,7 @@ export function ProjectGrid({ projects, loading, onRefetch }: ProjectGridProps) 
                       className="h-2 rounded-full transition-all duration-500"
                       style={{ backgroundColor: project.color }}
                       initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
+                      animate={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
                       transition={{ delay: index * 0.1 + 0.3, duration: 0.8 }}
                     />
                   </div>

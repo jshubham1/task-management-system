@@ -64,8 +64,11 @@ public class TaskService {
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .priority(request.getPriority())
-                .dueDate(request.getDueDate())
                 .user(user);
+
+        if (request.getDueDate() != null) {
+            taskBuilder.dueDate(request.getDueDate().atStartOfDay());
+        }
 
         if (request.getProjectId() != null) {
             Project project = projectRepository.findByIdAndUserId(request.getProjectId(), userId)
@@ -86,14 +89,22 @@ public class TaskService {
             throw new UnauthorizedAccessException("You don't have permission to update this task");
         }
 
-        // Update fields
-        task.setTitle(request.getTitle());
-        task.setDescription(request.getDescription());
-        task.setPriority(request.getPriority());
-        task.setDueDate(request.getDueDate());
+        // Update fields (partial updates allowed)
+        if (request.getTitle() != null) {
+            task.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            task.setDescription(request.getDescription());
+        }
+        if (request.getPriority() != null) {
+            task.setPriority(request.getPriority());
+        }
+        if (request.getDueDate() != null) {
+            task.setDueDate(request.getDueDate().atStartOfDay());
+        }
 
         // Handle status change
-        if (request.getStatus() != task.getStatus()) {
+        if (request.getStatus() != null && request.getStatus() != task.getStatus()) {
             task.setStatus(request.getStatus());
             if (request.getStatus() == TaskStatus.DONE) {
                 task.setCompletedAt(LocalDateTime.now());

@@ -9,14 +9,14 @@ import {
   UserIcon, 
   EnvelopeIcon, 
   CameraIcon,
-  CheckCircleIcon,
-  ClockIcon
+  CheckCircleIcon
 } from '@heroicons/react/24/outline'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/hooks/use-auth'
-import { api } from '@/lib/api'
+// import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -28,9 +28,7 @@ const profileSchema = z.object({
 type ProfileForm = z.infer<typeof profileSchema>
 
 export default function ProfilePage() {
-  const { user, updateUser } = useAuth()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const { user } = useAuth()
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
   const form = useForm<ProfileForm>({
@@ -44,7 +42,6 @@ export default function ProfilePage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setAvatarFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string)
@@ -53,19 +50,11 @@ export default function ProfilePage() {
     }
   }
 
-  const onSubmit = async (data: ProfileForm) => {
+  const onSubmit = async () => {
     if (!user) return
-    
-    setIsSubmitting(true)
-    try {
-      const response = await api.users.updateProfile(data)
-      updateUser(response.data)
-      toast.success('Profile updated successfully!')
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update profile')
-    } finally {
-      setIsSubmitting(false)
-    }
+    toast('Profile updates are temporarily disabled until the backend endpoint is available.', {
+      icon: '⏳',
+    })
   }
 
   if (!user) {
@@ -108,15 +97,20 @@ export default function ProfilePage() {
               <CardTitle>Personal Information</CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-sm text-gray-700">
+                Profile updates are currently disabled. This will be enabled once the backend profile update API is implemented.
+              </div>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Avatar Upload */}
                 <div className="flex items-center space-x-6">
                   <div className="relative">
                     {avatarPreview || user.profilePicture ? (
-                      <img
-                        className="h-20 w-20 rounded-full object-cover"
-                        src={avatarPreview || user.profilePicture}
+                      <Image
+                        className="rounded-full object-cover"
+                        src={(avatarPreview || user.profilePicture) as string}
                         alt={user.fullName}
+                        width={80}
+                        height={80}
                       />
                     ) : (
                       <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
@@ -189,21 +183,15 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Submit Button */}
-                <div className="flex justify-end">
+                <div className="flex flex-col items-end gap-2">
                   <Button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   >
-                    {isSubmitting ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Updating...</span>
-                      </div>
-                    ) : (
-                      'Update Profile'
-                    )}
+                    Update Profile (disabled)
                   </Button>
+                  <p className="text-xs text-gray-500">Backend endpoint not available</p>
                 </div>
               </form>
             </CardContent>

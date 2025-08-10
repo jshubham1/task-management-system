@@ -6,7 +6,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { TaskFilters as TaskFiltersType, TaskStatus, TaskPriority, UUID, ApiResponse, ProjectListResponse } from '@/types'
+import { TaskFilters as TaskFiltersType, UUID, ApiResponse, ProjectListResponse } from '@/types'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 

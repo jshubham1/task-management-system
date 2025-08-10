@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useQueryClient } from '@tanstack/react-query'
 import { 
   EllipsisHorizontalIcon,
   PencilIcon,
@@ -19,6 +20,7 @@ interface ProjectListProps {
 }
 
 export function ProjectList({ projects, loading, onRefetch }: ProjectListProps) {
+  const queryClient = useQueryClient()
   const handleDelete = async (projectId: string, projectName: string) => {
     if (!confirm(`Are you sure you want to delete "${projectName}"? This will also delete all associated tasks.`)) {
       return
@@ -28,6 +30,11 @@ export function ProjectList({ projects, loading, onRefetch }: ProjectListProps) 
       await api.projects.delete(projectId)
       toast.success('Project deleted successfully')
       onRefetch()
+      // Invalidate dashboard queries after project deletion
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['task-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] })
     } catch (error) {
       toast.error('Failed to delete project')
       console.error('Error deleting project:', error)

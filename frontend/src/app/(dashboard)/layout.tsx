@@ -22,7 +22,7 @@ export default function DashboardLayout({
       console.log('Dashboard layout Redirecting to login. Auth:', isAuthenticated, 'User:', !!user)
       router.push('/login')
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, user, router]);
 
   // Show loading while auth is being determined
   if (isLoading) {

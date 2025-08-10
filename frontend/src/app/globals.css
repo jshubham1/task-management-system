@@ -2,7 +2,9 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  /* Slightly softer default text than pure black for better readability */
+  --foreground: #0f172a; /* slate-900 */
+  color-scheme: light dark;
 }
 
 @theme inline {
@@ -14,13 +16,28 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b1220; /* slightly tinted dark bg */
+    --foreground: #e5e7eb; /* gray-200 */
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Use loaded Geist sans as the primary font with sensible fallbacks */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings: slightly tighter tracking and stronger weight for hierarchy */
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+}
+
+/* Improve text selection colors for better contrast */
+::selection {
+  background: #dbeafe; /* blue-100 */
+  color: #0f172a;      /* slate-900 */
 }

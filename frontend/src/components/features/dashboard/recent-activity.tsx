@@ -9,7 +9,6 @@ import {
 } from '@heroicons/react/24/outline'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ActivityResponse } from '@/types'
-import { formatRelativeTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
 interface RecentActivityProps {

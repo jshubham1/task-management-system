@@ -6,7 +6,6 @@ ProjectResponse,
 DashboardSummaryResponse,
 TaskStatsResponse,
 ProjectStatsResponse,
-ActivityResponse,
 TaskFilterRequest,
 ProjectFilters,
 LoginRequest,
@@ -19,6 +18,7 @@ AuthResponse,
 TaskListResponse,
 ProjectListResponse,
 ProjectSummaryListResponse,
+ProjectSummaryResponse,
 RecentActivityResponse,
 MessageResponse,
 TaskUpdateRequest,
@@ -150,9 +150,16 @@ constructor(baseURL: string) {
     },
 
     me: async (): Promise<UserResponse> => {
-      const response = await this.request<UserResponse>('/auth/me')
-      // The backend returns UserResponse directly, not wrapped in ApiResponse
-      return response as unknown as UserResponse
+      // Backend returns raw UserResponse at GET /auth/me (no ApiResponse wrapper)
+      const url = `${this.baseURL}/auth/me`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'GET', headers })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      return res.json()
     },
   }
 
@@ -279,26 +286,69 @@ constructor(baseURL: string) {
       if (filters?.projectId) params.append('projectId', filters.projectId)
       if (filters?.search) params.append('search', filters.search)
 
-      const queryString = params.toString()
-      return this.request<TaskListResponse>(`/tasks${queryString ? `?${queryString}` : ''}`)
+      const url = `${this.baseURL}/tasks${params.toString() ? `?${params.toString()}` : ''}`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'GET', headers })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      const page = await res.json()
+      return { data: page, success: true, message: 'OK', timestamp: new Date().toISOString() }
     },
 
     getById: async (id: string): Promise<ApiResponse<TaskResponse>> => {
-      return this.request<TaskResponse>(`/tasks/${id}`)
+      const url = `${this.baseURL}/tasks/${id}`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'GET', headers })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      const task: TaskResponse = await res.json()
+      return { data: task, success: true, message: 'OK', timestamp: new Date().toISOString() }
     },
 
     create: async (data: TaskCreateRequest): Promise<ApiResponse<TaskResponse>> => {
-      return this.request<TaskResponse>('/tasks', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      })
+      // Normalize dueDate to yyyy-MM-dd if provided
+      const normalized: TaskCreateRequest = {
+        ...data,
+        dueDate: data.dueDate
+          ? (data.dueDate.includes('T') ? data.dueDate.split('T')[0] : data.dueDate)
+          : undefined,
+      }
+      const url = `${this.baseURL}/tasks`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(normalized) })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      const task: TaskResponse = await res.json()
+      return { data: task, success: true, message: 'Created', timestamp: new Date().toISOString() }
     },
 
     update: async (id: string, data: TaskUpdateRequest): Promise<ApiResponse<TaskResponse>> => {
-      return this.request<TaskResponse>(`/tasks/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      })
+      // Normalize dueDate to yyyy-MM-dd if provided
+      const normalized: TaskUpdateRequest = {
+        ...data,
+        dueDate: data.dueDate
+          ? (data.dueDate.includes('T') ? data.dueDate.split('T')[0] : data.dueDate)
+          : undefined,
+      }
+      const url = `${this.baseURL}/tasks/${id}`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(normalized) })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      const task: TaskResponse = await res.json()
+      return { data: task, success: true, message: 'OK', timestamp: new Date().toISOString() }
     },
 
     delete: async (id: string): Promise<MessageResponse> => {
@@ -308,10 +358,34 @@ constructor(baseURL: string) {
     },
 
     updateStatus: async (id: string, status: TaskStatus): Promise<ApiResponse<TaskResponse>> => {
-      return this.request<TaskResponse>(`/tasks/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      })
+      // Fetch current task using wrapped getById to ensure consistent shape
+      const current = await this.tasks.getById(id)
+      // Normalize dueDate to date-only string to satisfy backend LocalDate (yyyy-MM-dd)
+      const dueDateDateOnly = current.data.dueDate
+        ? (current.data.dueDate.includes('T')
+            ? current.data.dueDate.split('T')[0]
+            : current.data.dueDate)
+        : undefined
+
+      const body: TaskUpdateRequest = {
+        title: current.data.title,
+        description: current.data.description ?? undefined,
+        status,
+        priority: current.data.priority,
+        dueDate: dueDateDateOnly,
+        projectId: current.data.projectId ?? undefined,
+      }
+
+      const url = `${this.baseURL}/tasks/${id}`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      const task: TaskResponse = await res.json()
+      return { data: task, success: true, message: 'OK', timestamp: new Date().toISOString() }
     },
 
     }
@@ -346,21 +420,42 @@ constructor(baseURL: string) {
     },
 
     getById: async (id: string): Promise<ApiResponse<ProjectResponse>> => {
-      return this.request<ProjectResponse>(`/projects/${id}`)
+      const url = `${this.baseURL}/projects/${id}`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'GET', headers })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      const project: ProjectResponse = await res.json()
+      return { data: project, success: true, message: 'OK', timestamp: new Date().toISOString() }
     },
 
     create: async (data: ProjectCreateRequest): Promise<ApiResponse<ProjectResponse>> => {
-      return this.request<ProjectResponse>('/projects', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      })
+      const url = `${this.baseURL}/projects`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(data) })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      const project: ProjectResponse = await res.json()
+      return { data: project, success: true, message: 'Created', timestamp: new Date().toISOString() }
     },
 
     update: async (id: string, data: ProjectUpdateRequest): Promise<ApiResponse<ProjectResponse>> => {
-      return this.request<ProjectResponse>(`/projects/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      })
+      const url = `${this.baseURL}/projects/${id}`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (this.token) headers.Authorization = `Bearer ${this.token}`
+      const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(data) })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${res.status}`)
+      }
+      const project: ProjectResponse = await res.json()
+      return { data: project, success: true, message: 'OK', timestamp: new Date().toISOString() }
     },
 
     delete: async (id: string): Promise<MessageResponse> => {
@@ -370,11 +465,79 @@ constructor(baseURL: string) {
     },
 
     getSummaries: async (): Promise<ApiResponse<ProjectSummaryListResponse>> => {
-      return this.request<ProjectSummaryListResponse>('/projects/summaries')
+      // Try /projects/summary first; some backends may return raw list or use /projects/summaries
+      const tryFetch = async (path: string): Promise<ApiResponse<ProjectSummaryListResponse>> => {
+        const url = `${this.baseURL}${path}`
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (this.token) headers.Authorization = `Bearer ${this.token}`
+        const res = await fetch(url, { method: 'GET', headers })
+        if (!res.ok) {
+          const error = await res.json().catch(() => ({ message: 'Network error' }))
+          throw new Error(error.message || `HTTP ${res.status}`)
+        }
+        const json = await res.json()
+
+        type AnyProjectSummary = {
+          id?: string
+          projectId?: string
+          name?: string
+          projectName?: string
+          color?: string
+          projectColor?: string
+          totalTasks?: number
+          taskCount?: number
+          tasks?: number
+          completedTasks?: number
+          doneTasks?: number
+          completed?: number
+          overdueTasks?: number
+          progressPercentage?: number
+          progress?: number
+          deadline?: string
+          isOverdue?: boolean
+          createdAt?: string
+        }
+
+        const normalize = (s: AnyProjectSummary): ProjectSummaryResponse => {
+          const progressRaw = s.progressPercentage ?? s.progress ?? 0
+          const progress = progressRaw > 1 ? progressRaw : progressRaw * 100
+          return {
+            id: (s.id ?? s.projectId ?? '') as string,
+            name: s.name ?? s.projectName ?? 'Untitled',
+            color: s.color ?? s.projectColor ?? '#3b82f6',
+            totalTasks: s.totalTasks ?? s.taskCount ?? s.tasks ?? 0,
+            completedTasks: s.completedTasks ?? s.doneTasks ?? s.completed ?? 0,
+            overdueTasks: s.overdueTasks ?? 0,
+            progress,
+            deadline: s.deadline,
+            isOverdue: Boolean(s.isOverdue),
+            createdAt: s.createdAt ?? new Date().toISOString(),
+          }
+        }
+
+        if (Array.isArray(json)) {
+          // Raw list
+          const mapped = (json as AnyProjectSummary[]).map(normalize)
+          return { data: mapped as ProjectSummaryListResponse, success: true, message: 'OK', timestamp: new Date().toISOString() }
+        }
+        // Assume ApiResponse shape (data can be array or object with list)
+        const wrapped = json as ApiResponse<unknown>
+        const arrayData = Array.isArray(wrapped.data) ? (wrapped.data as unknown[]) : []
+        const data = (arrayData as AnyProjectSummary[]).map(normalize)
+        return { data, success: true, message: 'OK', timestamp: new Date().toISOString() }
+      }
+
+      try {
+        return await tryFetch('/projects/summary')
+      } catch {
+        // Fallback path
+        return await tryFetch('/projects/summaries')
+      }
     },
 
     search: async (query: string): Promise<ApiResponse<ProjectListResponse>> => {
-      return this.request<ProjectListResponse>(`/projects/search?q=${encodeURIComponent(query)}`)
+      // Backend expects parameter name 'query'
+      return this.request<ProjectListResponse>(`/projects/search?query=${encodeURIComponent(query)}`)
     },
 
     getUpcomingDeadlines: async (days?: number): Promise<ApiResponse<ProjectListResponse>> => {

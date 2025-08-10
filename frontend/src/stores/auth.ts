@@ -114,7 +114,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             isAuthenticated: true,
             isLoading: false,
           })
-        } catch (error) {
+        } catch {
           set({
             user: null,
             isAuthenticated: false,

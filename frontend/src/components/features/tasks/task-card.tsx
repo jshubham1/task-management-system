@@ -1,18 +1,20 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { 
   CalendarIcon, 
-  UserIcon, 
   FlagIcon,
   EllipsisHorizontalIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  Bars3BottomLeftIcon
 } from '@heroicons/react/24/outline'
 import { Menu } from '@headlessui/react'
 import { Card, CardContent } from '@/components/ui/card'
-import { TaskResponse, TaskPriority } from '@/types'
+import { TaskResponse } from '@/types'
+import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core'
 import { formatDate, cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -21,6 +23,8 @@ interface TaskCardProps {
   task: TaskResponse
   isDragging?: boolean
   onRefetch: () => void
+  dragAttributes?: DraggableAttributes
+  dragListeners?: DraggableSyntheticListeners
 }
 
 const priorityColors = {
@@ -37,8 +41,9 @@ const priorityLabels = {
   CRITICAL: 'Critical',
 }
 
-export function TaskCard({ task, isDragging, onRefetch }: TaskCardProps) {
+export function TaskCard({ task, isDragging, onRefetch, dragAttributes, dragListeners }: TaskCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
+  const queryClient = useQueryClient()
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this task?')) return
@@ -48,6 +53,11 @@ export function TaskCard({ task, isDragging, onRefetch }: TaskCardProps) {
       await api.tasks.delete(task.id)
       toast.success('Task deleted successfully')
       onRefetch()
+      // Invalidate dashboard queries after deletion
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['task-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] })
     } catch (error) {
       toast.error('Failed to delete task')
       console.error('Error deleting task:', error)
@@ -69,14 +79,24 @@ export function TaskCard({ task, isDragging, onRefetch }: TaskCardProps) {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <Card className={cn(
-        "cursor-pointer transition-all duration-200 hover:shadow-md",
-        isDragging && "shadow-lg rotate-3 scale-105",
+        "cursor-pointer transition-transform duration-200 will-change-transform hover:shadow-md",
+        isDragging && "shadow-xl scale-[1.02]",
         isOverdue && "border-red-200 bg-red-50/50"
       )}>
         <CardContent className="p-4">
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 flex items-start gap-2">
+              {/* Drag handle */}
+              <button
+                aria-label="Drag task"
+                className="mt-0.5 h-7 w-7 flex items-center justify-center rounded-md cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                {...dragAttributes}
+                {...(dragListeners ?? {})}
+                title="Drag"
+              >
+                <Bars3BottomLeftIcon className="h-5 w-5" />
+              </button>
               <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">
                 {task.title}
               </h4>

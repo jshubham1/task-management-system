@@ -1,5 +1,6 @@
 package com.taskmanagement.api.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.taskmanagement.api.enums.TaskPriority;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -8,7 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -27,7 +28,8 @@ public class TaskCreateRequest {
     @Builder.Default
     private TaskPriority priority = TaskPriority.MEDIUM;
 
-    private LocalDateTime dueDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate dueDate;
 
     private UUID projectId;
 }

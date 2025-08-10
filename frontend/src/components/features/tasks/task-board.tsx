@@ -1,23 +1,25 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
 } from '@dnd-kit/core'
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import {
-  useSortable,
-} from '@dnd-kit/sortable'
+import { useSortable } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TaskCard } from './task-card'
@@ -71,34 +73,63 @@ function SortableTaskItem({ task, onRefetch }: SortableTaskItemProps) {
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition ? transition + ' cubic-bezier(0.2, 0.8, 0.2, 1)' : undefined,
+    willChange: 'transform',
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskCard task={task} onRefetch={onRefetch} />
+    <div ref={setNodeRef} style={style}>
+      <TaskCard
+        task={task}
+        onRefetch={onRefetch}
+        dragAttributes={attributes}
+        dragListeners={listeners}
+      />
+    </div>
+  )
+}
+
+// Droppable column wrapper to allow dropping into empty space reliably
+function DroppableColumn({ id, className, children }: { id: string; className?: string; children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({ id })
+  return (
+    <div ref={setNodeRef} className={className}>
+      {children}
     </div>
   )
 }
 
 export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
   const [optimisticTasks, setOptimisticTasks] = useState<Task[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 10,
+        delay: 120,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
 
   // Group tasks by status
+  const currentTasks = useMemo(() => (optimisticTasks.length > 0 ? optimisticTasks : tasks), [tasks, optimisticTasks])
+
   const tasksByStatus = useMemo(() => {
-    const currentTasks = optimisticTasks.length > 0 ? optimisticTasks : tasks
     return columns.reduce((acc, column) => {
       acc[column.id] = currentTasks.filter(task => task.status === column.id)
       return acc
     }, {} as Record<TaskStatus, Task[]>)
-  }, [tasks, optimisticTasks])
+  }, [currentTasks])
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
@@ -108,8 +139,8 @@ export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
     const activeId = active.id as string
     const overId = over.id as string
 
-    // Find the task being dragged
-    const draggedTask = tasks.find(task => task.id === activeId)
+    // Find the task being dragged from the latest list
+    const draggedTask = currentTasks.find(task => task.id === activeId)
     if (!draggedTask) return
 
     // Determine the new status based on the drop zone
@@ -117,8 +148,8 @@ export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
     if (overId.startsWith('column-')) {
       newStatus = overId.replace('column-', '') as TaskStatus
     } else {
-      // Dropped on another task, find that task's status
-      const targetTask = tasks.find(task => task.id === overId)
+      // Dropped on another task, find that task's status from the latest list
+      const targetTask = currentTasks.find(task => task.id === overId)
       newStatus = targetTask?.status || draggedTask.status
     }
 
@@ -126,7 +157,7 @@ export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
     if (newStatus === draggedTask.status) return
 
     // Optimistic update
-    const updatedTasks = tasks.map(task =>
+    const updatedTasks = currentTasks.map(task =>
       task.id === activeId ? { ...task, status: newStatus } : task
     )
     setOptimisticTasks(updatedTasks)
@@ -135,11 +166,17 @@ export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
       await api.tasks.updateStatus(activeId, newStatus)
       toast.success('Task status updated')
       onRefetch()
-    } catch (error) {
+      // Invalidate dashboard caches to sync cards, charts, and activity
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['task-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] })
+    } catch {
       // Revert optimistic update on error
       setOptimisticTasks([])
       toast.error('Failed to update task status')
     }
+    setActiveId(null)
   }
 
   if (loading) {
@@ -174,7 +211,8 @@ export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -197,7 +235,8 @@ export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
                 strategy={verticalListSortingStrategy}
                 id={`column-${column.id}`}
               >
-                <div
+                <DroppableColumn
+                  id={`column-${column.id}`}
                   className={cn(
                     "rounded-lg border-2 border-dashed p-4 min-h-[400px] transition-colors",
                     column.color
@@ -219,7 +258,7 @@ export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.2 }}
+                            transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
                           >
                             <SortableTaskItem task={task} onRefetch={onRefetch} />
                           </motion.div>
@@ -227,12 +266,26 @@ export function TaskBoard({ tasks, loading, onRefetch }: TaskBoardProps) {
                       </div>
                     )}
                   </AnimatePresence>
-                </div>
+                </DroppableColumn>
               </SortableContext>
             </div>
           )
         })}
       </div>
+
+      {/* Drag preview overlay for smoother dragging */}
+      <DragOverlay adjustScale={false} dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
+        {activeId ? (
+          (() => {
+            const t = currentTasks.find((tk) => tk.id === activeId)
+            return t ? (
+              <div className="pointer-events-none">
+                <TaskCard task={t} onRefetch={() => {}} isDragging />
+              </div>
+            ) : null
+          })()
+        ) : null}
+      </DragOverlay>
     </DndContext>
   )
 }

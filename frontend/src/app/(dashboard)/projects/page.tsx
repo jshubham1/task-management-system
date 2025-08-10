@@ -10,7 +10,7 @@ import { ProjectList } from '@/components/features/projects/project-list'
 import { CreateProjectModal } from '@/components/features/projects/create-project-modal'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { ApiResponse, ProjectListResponse, ProjectSummaryListResponse } from '@/types'
+import { ApiResponse, ProjectListResponse, ProjectSummaryListResponse, ProjectStatsResponse, ProjectSummaryResponse } from '@/types'
 
 type ViewMode = 'grid' | 'list'
 
@@ -28,6 +28,38 @@ export default function ProjectsPage() {
     queryKey: ['project-summaries'],
     queryFn: () => api.projects.getSummaries(),
   })
+
+  // Fallback: use dashboard project stats if project summaries endpoint is unavailable
+  const { data: projectStatsResp } = useQuery<ProjectStatsResponse>({
+    queryKey: ['project-stats'],
+    queryFn: () => api.dashboard.getProjectStats(),
+    staleTime: 60_000,
+  })
+
+  // Build a unified summaries list: prefer backend summaries; otherwise derive from stats
+  const summariesToUse: ProjectSummaryResponse[] = (() => {
+    const summaries = projectSummariesResp?.data
+    if (summaries && summaries.length > 0) return summaries
+    const stats = projectStatsResp?.projectProgress
+    const projects = projectsResp?.data || []
+    if (!stats || stats.length === 0 || projects.length === 0) return []
+    const byId = new Map(projects.map(p => [p.id, p]))
+    return stats.map(s => {
+      const p = byId.get(s.projectId)
+      return {
+        id: s.projectId,
+        name: s.projectName || p?.name || 'Untitled',
+        color: s.projectColor || p?.color || '#3b82f6',
+        totalTasks: s.totalTasks || 0,
+        completedTasks: s.completedTasks || 0,
+        overdueTasks: 0,
+        progress: s.progressPercentage || 0,
+        deadline: p?.deadline,
+        isOverdue: Boolean(p?.isOverdue),
+        createdAt: p?.createdAt || new Date().toISOString(),
+      }
+    })
+  })()
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
@@ -119,7 +151,7 @@ export default function ProjectsPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Completed</p>
               <p className="text-lg font-semibold text-gray-900">
-                {projectSummariesResp?.data?.filter((p) => p.progress === 100).length || 0}
+                {summariesToUse.filter((p) => p.progress === 100).length || 0}
               </p>
             </div>
           </div>
@@ -135,7 +167,7 @@ export default function ProjectsPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">In Progress</p>
               <p className="text-lg font-semibold text-gray-900">
-                {projectSummariesResp?.data?.filter((p) => p.progress > 0 && p.progress < 100).length || 0}
+                {summariesToUse.filter((p) => p.progress > 0 && p.progress < 100).length || 0}
               </p>
             </div>
           </div>
@@ -151,7 +183,7 @@ export default function ProjectsPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Total Tasks</p>
               <p className="text-lg font-semibold text-gray-900">
-                {projectSummariesResp?.data?.reduce((sum, p) => sum + p.totalTasks, 0) || 0}
+                {summariesToUse.reduce((sum, p) => sum + p.totalTasks, 0) || 0}
               </p>
             </div>
           </div>
@@ -170,6 +202,7 @@ export default function ProjectsPage() {
             projects={projectsResp?.data || []} 
             loading={isLoading} 
             onRefetch={refetch}
+            summaries={summariesToUse}
           />
         ) : (
           <ProjectList 

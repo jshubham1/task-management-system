@@ -1,4 +1,4 @@
-importtype{NextConfig}from"next";
+importtype{NextConfig}from'next'
 
 const nextConfig: NextConfig = {
 /* config options here */
@@ -15,6 +15,6 @@ experimental: {
 // This helps with hydration issues in development
 optimizePackageImports: ['lucide-react'],
 },
-};
+}
 
-export default nextConfig;
+export default nextConfig

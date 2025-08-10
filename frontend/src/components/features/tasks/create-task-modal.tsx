@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { useForm } from 'react-hook-form'
@@ -29,6 +29,7 @@ const priorityOptions = [
 ]
 
 export function CreateTaskModal({ open, onClose, onSuccess }: CreateTaskModalProps) {
+  const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { data: projectsResp, isLoading: projectsLoading, error: projectsError, refetch: refetchProjects } = useQuery<ApiResponse<ProjectListResponse>>({
@@ -54,15 +55,29 @@ export function CreateTaskModal({ open, onClose, onSuccess }: CreateTaskModalPro
 
   // Tag handlers removed
 
-  const onSubmit = async (data: CreateTaskForm) => {
-    setIsSubmitting(true)
-    try {
-      await api.tasks.create(data)
+  const mutation = useMutation({
+    mutationFn: async (data: CreateTaskForm) => {
+      return api.tasks.create(data)
+    },
+    onSuccess: async () => {
       toast.success('Task created successfully!')
       form.reset()
       onSuccess()
-    } catch (error) {
+      // Invalidate dashboard queries
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['task-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['project-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['recent-activity'] })
+    },
+    onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Failed to create task')
+    }
+  })
+
+  const onSubmit = async (data: CreateTaskForm) => {
+    setIsSubmitting(true)
+    try {
+      await mutation.mutateAsync(data)
     } finally {
       setIsSubmitting(false)
     }
