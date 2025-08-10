@@ -3,20 +3,17 @@
 import { motion } from 'framer-motion'
 import { 
   EllipsisHorizontalIcon,
-  UserGroupIcon,
-  CalendarIcon,
-  CheckCircleIcon,
   PencilIcon,
   TrashIcon
 } from '@heroicons/react/24/outline'
 import { Menu } from '@headlessui/react'
-import { Project } from '@/types'
-import { formatDate, formatRelativeTime, cn } from '@/lib/utils'
+import { ProjectResponse } from '@/types'
+import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 interface ProjectListProps {
-  projects: Project[]
+  projects: ProjectResponse[]
   loading?: boolean
   onRefetch: () => void
 }
@@ -37,7 +34,7 @@ export function ProjectList({ projects, loading, onRefetch }: ProjectListProps) 
     }
   }
 
-  const handleEdit = (projectId: string) => {
+  const handleEdit = () => {
     // TODO: Open edit modal
     toast('Edit functionality coming soon')
   }
@@ -93,9 +90,9 @@ export function ProjectList({ projects, loading, onRefetch }: ProjectListProps) 
       
       <div className="divide-y divide-gray-200">
         {projects.map((project, index) => {
-          const completedTasks = project.tasks?.filter(task => task.status === 'DONE').length || 0
-          const totalTasks = project.tasks?.length || 0
-          const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+          const completedTasks = 0
+          const totalTasks = 0
+          const progress = 0
           
           return (
             <motion.div
@@ -141,42 +138,7 @@ export function ProjectList({ projects, loading, onRefetch }: ProjectListProps) 
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-6 text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <CheckCircleIcon className="h-4 w-4" />
-                      <span>{completedTasks}/{totalTasks} tasks</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-1">
-                      <UserGroupIcon className="h-4 w-4" />
-                      <span>{project.members?.length || 0} members</span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-1">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>Created {formatRelativeTime(project.createdAt)}</span>
-                    </div>
-                  </div>
-                  
-                  {/* Owner */}
-                  <div className="mt-3 flex items-center space-x-2">
-                    {project.owner.avatar ? (
-                      <img
-                        className="h-6 w-6 rounded-full"
-                        src={project.owner.avatar}
-                        alt={project.owner.name}
-                      />
-                    ) : (
-                      <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-700">
-                          {project.owner.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <span className="text-sm text-gray-600">
-                      {project.owner.name}
-                    </span>
-                  </div>
+                  {/* Owner section omitted: owner field not available on ProjectResponse */}
                 </div>
                 
                 <div className="flex items-center space-x-4 ml-6">
@@ -200,7 +162,7 @@ export function ProjectList({ projects, loading, onRefetch }: ProjectListProps) 
                       <Menu.Item>
                         {({ active }) => (
                           <button
-                            onClick={() => handleEdit(project.id)}
+                            onClick={() => handleEdit()}
                             className={cn(
                               active ? 'bg-gray-50' : '',
                               'flex w-full items-center px-3 py-2 text-sm text-gray-700'

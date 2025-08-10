@@ -13,7 +13,7 @@ export function useTaskFilters() {
     search: undefined
   })
 
-  const updateFilter = useCallback((key: keyof TaskFilters, value: any) => {
+  const updateFilter = useCallback(<K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters(prev => ({
       ...prev,
       [key]: value

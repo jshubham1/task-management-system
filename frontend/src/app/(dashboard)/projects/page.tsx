@@ -10,6 +10,7 @@ import { ProjectList } from '@/components/features/projects/project-list'
 import { CreateProjectModal } from '@/components/features/projects/create-project-modal'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { ApiResponse, ProjectListResponse, ProjectSummaryListResponse } from '@/types'
 
 type ViewMode = 'grid' | 'list'
 
@@ -17,15 +18,15 @@ export default function ProjectsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const { data: projects, isLoading, refetch } = useQuery({
+  const { data: projectsResp, isLoading, refetch } = useQuery<ApiResponse<ProjectListResponse>>({
     queryKey: ['projects'],
-    queryFn: api.projects.getAll,
+    queryFn: () => api.projects.getAll(),
     refetchOnWindowFocus: false,
   })
 
-  const { data: projectSummaries } = useQuery({
+  const { data: projectSummariesResp } = useQuery<ApiResponse<ProjectSummaryListResponse>>({
     queryKey: ['project-summaries'],
-    queryFn: api.projects.getSummaries,
+    queryFn: () => api.projects.getSummaries(),
   })
 
   return (
@@ -102,7 +103,7 @@ export default function ProjectsPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Total Projects</p>
               <p className="text-lg font-semibold text-gray-900">
-                {projects?.length || 0}
+                {projectsResp?.data?.length || 0}
               </p>
             </div>
           </div>
@@ -118,7 +119,7 @@ export default function ProjectsPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Completed</p>
               <p className="text-lg font-semibold text-gray-900">
-                {projectSummaries?.filter(p => p.progress === 100).length || 0}
+                {projectSummariesResp?.data?.filter((p) => p.progress === 100).length || 0}
               </p>
             </div>
           </div>
@@ -134,7 +135,7 @@ export default function ProjectsPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">In Progress</p>
               <p className="text-lg font-semibold text-gray-900">
-                {projectSummaries?.filter(p => p.progress > 0 && p.progress < 100).length || 0}
+                {projectSummariesResp?.data?.filter((p) => p.progress > 0 && p.progress < 100).length || 0}
               </p>
             </div>
           </div>
@@ -150,7 +151,7 @@ export default function ProjectsPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Total Tasks</p>
               <p className="text-lg font-semibold text-gray-900">
-                {projectSummaries?.reduce((sum, p) => sum + p.taskCount, 0) || 0}
+                {projectSummariesResp?.data?.reduce((sum, p) => sum + p.totalTasks, 0) || 0}
               </p>
             </div>
           </div>
@@ -166,13 +167,13 @@ export default function ProjectsPage() {
       >
         {viewMode === 'grid' ? (
           <ProjectGrid 
-            projects={projects || []} 
+            projects={projectsResp?.data || []} 
             loading={isLoading} 
             onRefetch={refetch}
           />
         ) : (
           <ProjectList 
-            projects={projects || []} 
+            projects={projectsResp?.data || []} 
             loading={isLoading} 
             onRefetch={refetch}
           />

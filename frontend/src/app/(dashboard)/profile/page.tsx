@@ -36,7 +36,7 @@ export default function ProfilePage() {
   const form = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user?.name || '',
+      name: user?.fullName || '',
       email: user?.email || '',
     }
   })
@@ -112,16 +112,16 @@ export default function ProfilePage() {
                 {/* Avatar Upload */}
                 <div className="flex items-center space-x-6">
                   <div className="relative">
-                    {avatarPreview || user.avatar ? (
+                    {avatarPreview || user.profilePicture ? (
                       <img
                         className="h-20 w-20 rounded-full object-cover"
-                        src={avatarPreview || user.avatar}
-                        alt={user.name}
+                        src={avatarPreview || user.profilePicture}
+                        alt={user.fullName}
                       />
                     ) : (
                       <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
                         <span className="text-2xl font-bold text-white">
-                          {user.name.charAt(0).toUpperCase()}
+                          {(user.fullName || user.username).charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
@@ -136,7 +136,7 @@ export default function ProfilePage() {
                     </label>
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{user.name}</h3>
+                    <h3 className="text-lg font-medium text-gray-900">{user.fullName}</h3>
                     <p className="text-sm text-gray-500">Click the camera icon to update your photo</p>
                   </div>
                 </div>
@@ -232,9 +232,9 @@ export default function ProfilePage() {
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Role</span>
-                <span className="text-sm font-medium text-gray-900 capitalize">
-                  {user.role.toLowerCase()}
+                <span className="text-sm text-gray-600">Username</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {user.username}
                 </span>
               </div>
               

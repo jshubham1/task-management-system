@@ -1,19 +1,18 @@
 'use client'
 
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { TaskFilters as TaskFiltersType, TaskStatus, TaskPriority } from '@/types'
+import { TaskFilters as TaskFiltersType, TaskStatus, TaskPriority, UUID, ApiResponse, ProjectListResponse } from '@/types'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 interface TaskFiltersProps {
   filters: TaskFiltersType
-  onFilterChange: (key: keyof TaskFiltersType, value: any) => void
+  onFilterChange: <K extends keyof TaskFiltersType>(key: K, value: TaskFiltersType[K]) => void
   onReset: () => void
   hasActiveFilters: boolean
 }
@@ -33,15 +32,19 @@ const priorityOptions = [
 ]
 
 export function TaskFilters({ filters, onFilterChange, onReset, hasActiveFilters }: TaskFiltersProps) {
-  const { data: projects } = useQuery({
+  const { data: projectsResp } = useQuery<ApiResponse<ProjectListResponse>>({
     queryKey: ['projects'],
     queryFn: () => api.projects.getAll(),
   })
 
-  const { data: users } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => api.users.getAll(),
-  })
+  // Toggle helper for array-based filters (e.g., multi-select projectId)
+  const toggleArrayFilter = (key: 'projectId', value: UUID) => {
+    const current = filters[key]
+    const currentArr = Array.isArray(current) ? current : current ? [current] : []
+    const exists = currentArr.includes(value)
+    const next = exists ? currentArr.filter(v => v !== value) : [...currentArr, value]
+    onFilterChange(key, next as TaskFiltersType['projectId'])
+  }
 
   const toggleSingleFilter = (key: keyof TaskFiltersType, value: string) => {
     const currentValue = filters[key]
@@ -132,20 +135,27 @@ export function TaskFilters({ filters, onFilterChange, onReset, hasActiveFilters
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">Projects</label>
             <div className="space-y-2 max-h-32 overflow-y-auto">
-              {projects?.map((project) => (
-                <label key={project.id} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={(filters.projectId || []).includes(project.id)}
-                    onChange={() => toggleArrayFilter('projectId', project.id)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 truncate">
-                    {project.name}
-                  </span>
-                </label>
-              ))}
-              {!projects?.length && (
+              {projectsResp?.data?.map((project) => {
+                const selected = Array.isArray(filters.projectId)
+                  ? filters.projectId
+                  : filters.projectId
+                  ? [filters.projectId]
+                  : []
+                return (
+                  <label key={project.id} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(project.id)}
+                      onChange={() => toggleArrayFilter('projectId', project.id)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 truncate">
+                      {project.name}
+                    </span>
+                  </label>
+                )
+              })}
+              {!projectsResp?.data?.length && (
                 <p className="text-sm text-gray-500">No projects found</p>
               )}
             </div>
@@ -191,7 +201,7 @@ export function TaskFilters({ filters, onFilterChange, onReset, hasActiveFilters
             <div className="flex flex-wrap gap-2">
               {filters.search && (
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  Search: "{filters.search}"
+                  Search: &quot;{filters.search}&quot;
                   <button
                     onClick={() => onFilterChange('search', '')}
                     className="ml-1 text-blue-600 hover:text-blue-800"
@@ -205,7 +215,7 @@ export function TaskFilters({ filters, onFilterChange, onReset, hasActiveFilters
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                   Status: {statusOptions.find(s => s.value === filters.status)?.label}
                   <button
-                    onClick={() => toggleSingleFilter('status', filters.status)}
+                    onClick={() => toggleSingleFilter('status', filters.status!)}
                     className="ml-1 text-gray-600 hover:text-gray-800"
                   >
                     <XMarkIcon className="h-3 w-3" />
@@ -217,7 +227,7 @@ export function TaskFilters({ filters, onFilterChange, onReset, hasActiveFilters
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                   Priority: {priorityOptions.find(p => p.value === filters.priority)?.label}
                   <button
-                    onClick={() => toggleSingleFilter('priority', filters.priority)}
+                    onClick={() => toggleSingleFilter('priority', filters.priority!)}
                     className="ml-1 text-gray-600 hover:text-gray-800"
                   >
                     <XMarkIcon className="h-3 w-3" />

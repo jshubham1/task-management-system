@@ -1,15 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface StatsCardProps {
   title: string
   value: number
-  change: string
-  trend: 'up' | 'down'
   icon: string
   color: 'blue' | 'green' | 'yellow' | 'red'
   loading?: boolean
@@ -29,7 +26,7 @@ const bgColorVariants = {
   red: 'bg-red-50',
 }
 
-export function StatsCard({ title, value, change, trend, icon, color, loading }: StatsCardProps) {
+export function StatsCard({ title, value, icon, color, loading }: StatsCardProps) {
   if (loading) {
     return (
       <Card className="overflow-hidden">
@@ -65,17 +62,6 @@ export function StatsCard({ title, value, change, trend, icon, color, loading }:
                   <p className="text-2xl font-bold text-gray-900">
                     {value.toLocaleString()}
                   </p>
-                  <div className={cn(
-                    "flex items-center text-xs font-medium",
-                    trend === 'up' ? 'text-green-600' : 'text-red-600'
-                  )}>
-                    {trend === 'up' ? (
-                      <ArrowTrendingUpIcon className="h-3 w-3 mr-1" />
-                    ) : (
-                      <ArrowTrendingDownIcon className="h-3 w-3 mr-1" />
-                    )}
-                    {change}
-                  </div>
                 </div>
               </div>
               <div className={cn(

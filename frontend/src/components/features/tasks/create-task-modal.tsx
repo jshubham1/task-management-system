@@ -9,9 +9,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
 import { createTaskSchema, type CreateTaskForm } from '@/lib/validations'
-import { TaskPriority } from '@/types'
+import { ApiResponse, ProjectListResponse, TaskPriority } from '@/types'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -26,24 +25,19 @@ const priorityOptions = [
   { value: 'LOW' as TaskPriority, label: 'Low', color: 'bg-gray-100 text-gray-800' },
   { value: 'MEDIUM' as TaskPriority, label: 'Medium', color: 'bg-blue-100 text-blue-800' },
   { value: 'HIGH' as TaskPriority, label: 'High', color: 'bg-orange-100 text-orange-800' },
-  { value: 'URGENT' as TaskPriority, label: 'Urgent', color: 'bg-red-100 text-red-800' },
+  { value: 'CRITICAL' as TaskPriority, label: 'Critical', color: 'bg-red-100 text-red-800' },
 ]
 
 export function CreateTaskModal({ open, onClose, onSuccess }: CreateTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [tagInput, setTagInput] = useState('')
 
-  const { data: projects } = useQuery({
+  const { data: projectsResp, isLoading: projectsLoading, error: projectsError, refetch: refetchProjects } = useQuery<ApiResponse<ProjectListResponse>>({
     queryKey: ['projects'],
     queryFn: () => api.projects.getAll(),
     enabled: open,
   })
 
-  const { data: users } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => api.users.getAll(),
-    enabled: open,
-  })
+  // Assignee selection not supported by current schema; users query removed
 
   const form = useForm<CreateTaskForm>({
     resolver: zodResolver(createTaskSchema),
@@ -52,31 +46,13 @@ export function CreateTaskModal({ open, onClose, onSuccess }: CreateTaskModalPro
       description: '',
       priority: 'MEDIUM',
       dueDate: '',
-      assigneeId: '',
-      projectId: '',
-      tags: []
+      projectId: ''
     }
   })
 
-  const watchedTags = form.watch('tags')
+  // Tags not part of schema; related state and handlers removed
 
-  const handleAddTag = () => {
-    if (tagInput.trim() && !watchedTags.includes(tagInput.trim())) {
-      form.setValue('tags', [...watchedTags, tagInput.trim()])
-      setTagInput('')
-    }
-  }
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    form.setValue('tags', watchedTags.filter(tag => tag !== tagToRemove))
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleAddTag()
-    }
-  }
+  // Tag handlers removed
 
   const onSubmit = async (data: CreateTaskForm) => {
     setIsSubmitting(true)
@@ -94,7 +70,6 @@ export function CreateTaskModal({ open, onClose, onSuccess }: CreateTaskModalPro
 
   const handleClose = () => {
     form.reset()
-    setTagInput('')
     onClose()
   }
 
@@ -223,75 +198,31 @@ export function CreateTaskModal({ open, onClose, onSuccess }: CreateTaskModalPro
                             className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           >
                             <option value="">Select project</option>
-                            {projects?.map((project) => (
+                            {projectsLoading && (
+                              <option value="" disabled>
+                                Loading projects...
+                              </option>
+                            )}
+                            {!projectsLoading && projectsResp?.data?.map((project) => (
                               <option key={project.id} value={project.id}>
                                 {project.name}
                               </option>
                             ))}
                           </select>
+                          {projectsError && (
+                            <div className="mt-1 text-xs text-red-600">
+                              Failed to load projects. <button type="button" className="underline" onClick={() => refetchProjects()}>Retry</button>
+                            </div>
+                          )}
+                          {!projectsLoading && !projectsError && !projectsResp?.data?.length && (
+                            <p className="mt-1 text-xs text-gray-500">No projects found</p>
+                          )}
                         </div>
                       </div>
 
-                      {/* Assignee */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Assignee
-                        </label>
-                        <select
-                          {...form.register('assigneeId')}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        >
-                          <option value="">Assign to someone</option>
-                          {users?.map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {user.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      {/* Assignee selection omitted: not part of current createTaskSchema */}
 
-                      {/* Tags */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Tags
-                        </label>
-                        <div className="flex space-x-2 mb-2">
-                          <Input
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Add a tag"
-                            className="flex-1"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleAddTag}
-                            disabled={!tagInput.trim()}
-                          >
-                            Add
-                          </Button>
-                        </div>
-                        {watchedTags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {watchedTags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                              >
-                                {tag}
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveTag(tag)}
-                                  className="ml-1 text-blue-600 hover:text-blue-800"
-                                >
-                                  <XMarkIcon className="h-3 w-3" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      {/* Tags section omitted: not part of current createTaskSchema */}
 
                       {/* Submit Buttons */}
                       <div className="flex justify-end space-x-3 pt-4">

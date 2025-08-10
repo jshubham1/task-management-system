@@ -5,19 +5,18 @@ import {
   EllipsisHorizontalIcon,
   UserGroupIcon,
   CalendarIcon,
-  CheckCircleIcon,
   PencilIcon,
   TrashIcon
 } from '@heroicons/react/24/outline'
 import { Menu } from '@headlessui/react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Project } from '@/types'
+import { ProjectResponse } from '@/types'
 import { formatDate, cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 interface ProjectGridProps {
-  projects: Project[]
+  projects: ProjectResponse[]
   loading?: boolean
   onRefetch: () => void
 }
@@ -84,9 +83,9 @@ export function ProjectGrid({ projects, loading, onRefetch }: ProjectGridProps) 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {projects.map((project, index) => {
-        const completedTasks = project.tasks?.filter(task => task.status === 'DONE').length || 0
-        const totalTasks = project.tasks?.length || 0
-        const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+        const completedTasks = 0
+        const totalTasks = 0
+        const progress = 0
 
         return (
           <motion.div
@@ -181,7 +180,7 @@ export function ProjectGrid({ projects, loading, onRefetch }: ProjectGridProps) 
                 <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-100">
                   <div className="flex items-center space-x-1">
                     <UserGroupIcon className="h-4 w-4" />
-                    <span>{project.members?.length || 0} members</span>
+                    <span>0 members</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <CalendarIcon className="h-4 w-4" />
@@ -189,27 +188,6 @@ export function ProjectGrid({ projects, loading, onRefetch }: ProjectGridProps) 
                   </div>
                 </div>
 
-                {/* Owner */}
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <div className="flex items-center space-x-2">
-                    {project.owner.avatar ? (
-                      <img
-                        className="h-6 w-6 rounded-full"
-                        src={project.owner.avatar}
-                        alt={project.owner.name}
-                      />
-                    ) : (
-                      <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-700">
-                          {project.owner.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <span className="text-sm text-gray-600">
-                      Created by {project.owner.name}
-                    </span>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </motion.div>

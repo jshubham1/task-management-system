@@ -2,20 +2,14 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { StatsCard } from '@/components/features/dashboard/stats-card'
 import { TaskChart } from '@/components/features/dashboard/task-chart'
 import { RecentActivity } from '@/components/features/dashboard/recent-activity'
 import { ProjectProgress } from '@/components/features/dashboard/project-progress'
 import { QuickActions } from '@/components/features/dashboard/quick-actions'
 import { api } from '@/lib/api'
+import { RecentStats } from '@/components/features/dashboard/recent-stats'
 
 export default function DashboardPage() {
-  const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ['dashboard-summary'],
-    queryFn: () => api.dashboard.getSummary(),
-    refetchInterval: 30000, // Refetch every 30 seconds
-  })
-
   const { data: taskStats } = useQuery({
     queryKey: ['task-stats'],
     queryFn: () => api.dashboard.getTaskStats({ days: 30 }),
@@ -31,41 +25,6 @@ export default function DashboardPage() {
     queryFn: () => api.dashboard.getRecentActivity({ limit: 10 }),
   })
 
-  const statsCards = [
-    {
-      title: 'Total Tasks',
-      value: summary?.totalTasks || 0,
-      change: '+12%',
-      trend: 'up' as const,
-      icon: '📋',
-      color: 'blue' as const
-    },
-    {
-      title: 'Completed',
-      value: summary?.completedTasks || 0,
-      change: '+8%',
-      trend: 'up' as const,
-      icon: '✅',
-      color: 'green' as const
-    },
-    {
-      title: 'In Progress',
-      value: summary?.pendingTasks || 0,
-      change: '-3%',
-      trend: 'down' as const,
-      icon: '⏳',
-      color: 'yellow' as const
-    },
-    {
-      title: 'Overdue',
-      value: summary?.overdueTasks || 0,
-      change: '-15%',
-      trend: 'down' as const,
-      icon: '⚠️',
-      color: 'red' as const
-    }
-  ]
-
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -76,28 +35,12 @@ export default function DashboardPage() {
       >
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="mt-2 text-sm text-gray-700">
-          Welcome back! Here's what's happening with your tasks and projects.
+          Welcome back! Here&apos;s what&apos;s happening with your tasks and projects.
         </p>
       </motion.div>
 
       {/* Stats Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8"
-      >
-        {statsCards.map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + index * 0.05 }}
-          >
-            <StatsCard {...stat} loading={summaryLoading} />
-          </motion.div>
-        ))}
-      </motion.div>
+      <RecentStats />
 
       {/* Quick Actions */}
       <motion.div

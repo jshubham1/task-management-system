@@ -12,6 +12,7 @@ import { CreateTaskModal } from '@/components/features/tasks/create-task-modal'
 import { useTaskFilters } from '@/hooks/use-task-filters'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { ApiResponse, TaskFilterRequest, TaskListResponse } from '@/types'
 
 type ViewMode = 'board' | 'list'
 
@@ -21,9 +22,23 @@ export default function TasksPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const { filters, updateFilter, resetFilters, hasActiveFilters } = useTaskFilters()
 
-  const { data: tasks, isLoading, refetch } = useQuery({
+  const { data: tasksResp, isLoading, refetch } = useQuery<ApiResponse<TaskListResponse>>({
     queryKey: ['tasks', filters],
-    queryFn: () => api.tasks.getAll(filters),
+    queryFn: () => {
+      const req: TaskFilterRequest = {
+        page: filters.page,
+        size: filters.size,
+        sortBy: filters.sortBy,
+        sortDirection: filters.sortDirection,
+        status: filters.status,
+        priority: filters.priority,
+        projectId: Array.isArray(filters.projectId)
+          ? filters.projectId[0]
+          : filters.projectId,
+        search: filters.search,
+      }
+      return api.tasks.getAll(req)
+    },
     refetchOnWindowFocus: false,
   })
 
@@ -129,9 +144,9 @@ export default function TasksPage() {
         transition={{ duration: 0.3 }}
       >
         {viewMode === 'board' ? (
-          <TaskBoard tasks={tasks || []} loading={isLoading} onRefetch={refetch} />
+          <TaskBoard tasks={tasksResp?.data?.content || []} loading={isLoading} onRefetch={refetch} />
         ) : (
-          <TaskList tasks={tasks || []} loading={isLoading} onRefetch={refetch} />
+          <TaskList tasks={tasksResp?.data?.content || []} loading={isLoading} onRefetch={refetch} />
         )}
       </motion.div>
 

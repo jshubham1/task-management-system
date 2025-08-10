@@ -29,14 +29,16 @@ const quickActions = [
     description: 'Add team member',
     icon: UserPlusIcon,
     color: 'bg-purple-500 hover:bg-purple-600',
-    action: 'invite-member'
+    action: 'invite-member',
+    disabled: true
   },
   {
     title: 'Import Tasks',
     description: 'Import from CSV',
     icon: DocumentPlusIcon,
     color: 'bg-orange-500 hover:bg-orange-600',
-    action: 'import-tasks'
+    action: 'import-tasks',
+    disabled: true
   }
 ]
 
@@ -52,14 +54,6 @@ export function QuickActions() {
       case 'create-project':
         setCreateProjectModalOpen(true)
         break
-      case 'invite-member':
-        toast('Invite functionality coming soon...')
-        // TODO: Open invite modal
-        break
-      case 'import-tasks':
-        toast('Import functionality coming soon...')
-        // TODO: Open import dialog
-        break
       default:
         break
     }
@@ -68,13 +62,11 @@ export function QuickActions() {
   const handleTaskCreated = () => {
     setCreateTaskModalOpen(false)
     toast.success('Task created successfully!')
-    // TODO: Refresh task data if needed
   }
 
   const handleProjectCreated = () => {
     setCreateProjectModalOpen(false)
     toast.success('Project created successfully!')
-    // TODO: Refresh project data if needed
   }
 
   return (
@@ -97,8 +89,9 @@ export function QuickActions() {
             >
               <Button
                 variant="outline"
-                className="h-auto p-4 flex flex-col items-center space-y-2 w-full border-2 hover:border-gray-300 transition-all duration-200"
+                className="h-auto p-4 flex flex-col items-center space-y-2 w-full border-2 hover:border-gray-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => handleAction(action.action)}
+                disabled={action.disabled}
               >
                 <div className={`p-3 rounded-full text-white ${action.color} transition-colors`}>
                   <action.icon className="h-6 w-6" />
@@ -112,14 +105,14 @@ export function QuickActions() {
           ))}
         </div>
       </CardContent>
-      
+
       {/* Modals */}
       <CreateTaskModal
         open={createTaskModalOpen}
         onClose={() => setCreateTaskModalOpen(false)}
         onSuccess={handleTaskCreated}
       />
-      
+
       <CreateProjectModal
         open={createProjectModalOpen}
         onClose={() => setCreateProjectModalOpen(false)}

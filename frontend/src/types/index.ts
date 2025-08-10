@@ -2,12 +2,12 @@
 exporttypeUUID = string
 
 exportinterfaceBaseEntity {
-    id:UUID
-    createdAt:string
-    updatedAt:string
+  id:UUID
+  createdAt:string
+  updatedAt:string
 }
 
-exportinterfacePaginatedResponse < T= any> {
+exportinterfacePaginatedResponse < T= unknown> {
 content: T[]
 pageable: Pageable
 totalElements: number
@@ -32,7 +32,7 @@ direction: 'ASC' | 'DESC'
 property: string
 }
 
-export interface ApiResponse < T = any> {
+export interface ApiResponse < T = unknown> {
 data: T
 message?: string
 success: boolean
@@ -183,6 +183,23 @@ uploadedAt: string
 
 export type TaskListResponse = PaginatedResponse<TaskResponse>
 
+// Filters used by UI components
+export interface TaskFilters {
+page: number
+size: number
+sortBy: string
+sortDirection: 'asc' | 'desc'
+status?: TaskStatus
+priority?: TaskPriority
+// Some UIs allow multi-select of projects; support both
+projectId?: UUID | UUID[]
+search?: string
+dueDate?: {
+from?: string
+to?: string
+}
+}
+
 // Project Models
 export interface ProjectCreateRequest {
 name: string
@@ -270,8 +287,6 @@ totalTasks: number
 completedTasks: number
 progressPercentage: number
 deadline?: string
-isOverdue: boolean
-daysUntilDeadline?: number
 }
 
 export interface ActivityResponse {
@@ -282,7 +297,7 @@ description: string
 entityType: 'TASK' | 'PROJECT' | 'USER'
 entityId: UUID
 entityName: string
-metadata: Record < string, any>
+metadata: Record < string, unknown>
 timestamp: string
 timeAgo: string
 icon: string
@@ -304,7 +319,7 @@ validationErrors?: ValidationError[]
 export interface ValidationError {
 field: string
 message: string
-rejectedValue?: any
+rejectedValue?: unknown
 }
 
 export interface BadRequestError extends ApiError {
@@ -349,24 +364,24 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
 export interface ApiRequestConfig {
 method: HttpMethod
 url: string
-data?: any
-params?: Record< string, any>
-headers?: Record< string, string>
+data?: unknown
+params?: Record < string, unknown>
+headers?: Record < string, string>
 }
 
-export interface ApiResponseType < T = any> {
+export interface ApiResponseType < T = unknown> {
 data: T
 status: number
 statusText: string
-headers: Record< string, string>
+headers: Record < string, string>
 }
 
 export interface ApiClient {
-get: < T = any>(url: string, params?: Record<string, any>) => Promise<ApiResponseType<T>>
-post: < T = any>(url: string, data?: any) => Promise<ApiResponseType<T>>
-put: < T = any>(url: string, data?: any) => Promise<ApiResponseType<T>>
-delete: < T = any>(url: string) => Promise<ApiResponseType<T>>
-patch: < T = any>(url: string, data?: any) => Promise<ApiResponseType<T>>
+get: < T = unknown>(url: string, params?: Record<string, unknown>) => Promise<ApiResponseType<T>>
+post: < T = unknown>(url: string, data?: unknown) => Promise<ApiResponseType<T>>
+put: < T = unknown>(url: string, data?: unknown) => Promise<ApiResponseType<T>>
+delete: < T = unknown>(url: string) => Promise<ApiResponseType<T>>
+patch: < T = unknown>(url: string, data?: unknown) => Promise<ApiResponseType<T>>
 }
 
 // Service Interfaces
@@ -416,20 +431,11 @@ export interface UseAuthReturn {
   isAuthenticated: boolean
 }
 
-export interface TaskFilters {
-  page: number
-  size: number
-  sortBy: string
-  sortDirection: 'asc' | 'desc'
-  status?: TaskStatus
-  priority?: TaskPriority
-  projectId?: string
-  search?: string
-}
+// Note: TaskFilters is already defined above with richer fields; keep a single source of truth.
 
 export interface UseTaskFiltersReturn {
   filters: TaskFilters
-  updateFilter: (key: keyof TaskFilters, value: any) => void
+  updateFilter: <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => void
   resetFilters: () => void
   clearFilter: (key: keyof TaskFilters) => void
 }

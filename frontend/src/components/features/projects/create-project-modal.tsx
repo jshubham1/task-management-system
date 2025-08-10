@@ -35,6 +35,7 @@ const colorOptions = [
 
 export function CreateProjectModal({ open, onClose, onSuccess }: CreateProjectModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
 
   const { data: users } = useQuery({
     queryKey: ['users'],
@@ -48,19 +49,18 @@ export function CreateProjectModal({ open, onClose, onSuccess }: CreateProjectMo
       name: '',
       description: '',
       color: colorOptions[0],
-      memberIds: []
     }
   })
 
   const watchedColor = form.watch('color')
-  const watchedMemberIds = form.watch('memberIds')
+  const watchedMemberIds = selectedMemberIds
 
   const toggleMember = (userId: string) => {
-    const currentMembers = watchedMemberIds || []
-    const newMembers = currentMembers.includes(userId)
-      ? currentMembers.filter(id => id !== userId)
-      : [...currentMembers, userId]
-    form.setValue('memberIds', newMembers)
+    setSelectedMemberIds(prev => (
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    ))
   }
 
   const onSubmit = async (data: CreateProjectForm) => {
@@ -69,6 +69,7 @@ export function CreateProjectModal({ open, onClose, onSuccess }: CreateProjectMo
       await api.projects.create(data)
       toast.success('Project created successfully!')
       form.reset()
+      setSelectedMemberIds([])
       onSuccess()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create project')
@@ -79,6 +80,7 @@ export function CreateProjectModal({ open, onClose, onSuccess }: CreateProjectMo
 
   const handleClose = () => {
     form.reset()
+    setSelectedMemberIds([])
     onClose()
   }
 
@@ -193,7 +195,7 @@ export function CreateProjectModal({ open, onClose, onSuccess }: CreateProjectMo
                           Team Members
                         </label>
                         <div className="max-h-32 overflow-y-auto space-y-2 border border-gray-200 rounded-md p-3">
-                          {users?.map((user) => (
+                          {users?.data?.map((user) => (
                             <label key={user.id} className="flex items-center space-x-2 cursor-pointer">
                               <input
                                 type="checkbox"
@@ -202,25 +204,25 @@ export function CreateProjectModal({ open, onClose, onSuccess }: CreateProjectMo
                                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                               />
                               <div className="flex items-center space-x-2">
-                                {user.avatar ? (
+                                {user.profilePicture ? (
                                   <img
                                     className="h-6 w-6 rounded-full"
-                                    src={user.avatar}
-                                    alt={user.name}
+                                    src={user.profilePicture}
+                                    alt={user.fullName}
                                   />
                                 ) : (
                                   <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center">
                                     <span className="text-xs font-medium text-gray-700">
-                                      {user.name.charAt(0).toUpperCase()}
+                                      {user.fullName.charAt(0).toUpperCase()}
                                     </span>
                                   </div>
                                 )}
-                                <span className="text-sm text-gray-700">{user.name}</span>
+                                <span className="text-sm text-gray-700">{user.fullName}</span>
                                 <span className="text-xs text-gray-500">({user.email})</span>
                               </div>
                             </label>
                           ))}
-                          {!users?.length && (
+                          {!users?.data?.length && (
                             <p className="text-sm text-gray-500 text-center py-2">
                               No team members available
                             </p>

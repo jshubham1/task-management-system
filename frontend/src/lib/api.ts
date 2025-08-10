@@ -1,6 +1,7 @@
 import {
     UserResponse,
 TaskResponse,
+TaskStatus,
 ProjectResponse,
 DashboardSummaryResponse,
 TaskStatsResponse,
@@ -251,6 +252,19 @@ constructor(baseURL: string) {
       return response.json()
     },
   }
+  
+  // User endpoints
+  users = {
+    getAll: async (): Promise<ApiResponse<UserResponse[]>> => {
+      return this.request<UserResponse[]>('/users')
+    },
+    updateProfile: async (data: { fullName?: string; email?: string; profilePicture?: string }): Promise<ApiResponse<UserResponse>> => {
+      return this.request<UserResponse>('/users/me', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+    },
+  }
 
   // Task endpoints
   tasks = {
@@ -293,6 +307,13 @@ constructor(baseURL: string) {
       })
     },
 
+    updateStatus: async (id: string, status: TaskStatus): Promise<ApiResponse<TaskResponse>> => {
+      return this.request<TaskResponse>(`/tasks/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      })
+    },
+
     }
 
   // Project endpoints
@@ -302,7 +323,26 @@ constructor(baseURL: string) {
       if (filters?.search) params.append('search', filters.search)
 
       const queryString = params.toString()
-      return this.request<ProjectListResponse>(`/projects${queryString ? `?${queryString}` : ''}`)
+      // Backend returns a raw list (ProjectResponse[]), not wrapped in ApiResponse
+      const url = `${this.baseURL}/projects${queryString ? `?${queryString}` : ''}`
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      if (this.token) {
+        headers.Authorization = `Bearer ${this.token}`
+      }
+      const response = await fetch(url, { method: 'GET', headers })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Network error' }))
+        throw new Error(error.message || `HTTP ${response.status}`)
+      }
+      const list: ProjectListResponse = await response.json()
+      return {
+        data: list,
+        success: true,
+        message: 'OK',
+        timestamp: new Date().toISOString(),
+      }
     },
 
     getById: async (id: string): Promise<ApiResponse<ProjectResponse>> => {
