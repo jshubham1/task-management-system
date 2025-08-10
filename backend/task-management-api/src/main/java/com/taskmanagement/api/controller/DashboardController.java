@@ -7,6 +7,9 @@ import com.taskmanagement.api.dto.response.TaskStatsResponse;
 import com.taskmanagement.api.security.UserPrincipal;
 import com.taskmanagement.api.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +32,10 @@ public class DashboardController {
 
     @GetMapping("/summary")
     @Operation(summary = "Get dashboard summary", description = "Retrieves overall dashboard statistics")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Summary retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<DashboardSummaryResponse> getDashboardSummary(
             @AuthenticationPrincipal UserPrincipal currentUser) {
         DashboardSummaryResponse summary = dashboardService.getDashboardSummary(currentUser.getId());
@@ -37,15 +44,23 @@ public class DashboardController {
 
     @GetMapping("/task-stats")
     @Operation(summary = "Get task statistics", description = "Retrieves detailed task statistics")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task stats retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<TaskStatsResponse> getTaskStatistics(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(defaultValue = "30") int days) {
+            @Parameter(description = "Number of days to include in stats") @RequestParam(defaultValue = "30") int days) {
         TaskStatsResponse stats = dashboardService.getTaskStatistics(currentUser.getId(), days);
         return ResponseEntity.ok(stats);
     }
 
     @GetMapping("/project-stats")
     @Operation(summary = "Get project statistics", description = "Retrieves project progress statistics")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Project stats retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<ProjectStatsResponse> getProjectStatistics(
             @AuthenticationPrincipal UserPrincipal currentUser) {
         ProjectStatsResponse stats = dashboardService.getProjectStatistics(currentUser.getId());
@@ -54,9 +69,13 @@ public class DashboardController {
 
     @GetMapping("/recent-activity")
     @Operation(summary = "Get recent activity", description = "Retrieves recent user activity")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Recent activity retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<List<ActivityResponse>> getRecentActivity(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(defaultValue = "10") int limit) {
+            @Parameter(description = "Maximum number of activity items") @RequestParam(defaultValue = "10") int limit) {
         List<ActivityResponse> activities = dashboardService.getRecentActivity(currentUser.getId(), limit);
         return ResponseEntity.ok(activities);
     }

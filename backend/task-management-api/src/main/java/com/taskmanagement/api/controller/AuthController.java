@@ -7,7 +7,9 @@ import com.taskmanagement.api.dto.response.*;
 import com.taskmanagement.api.security.UserPrincipal;
 import com.taskmanagement.api.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -56,6 +58,15 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    @Operation(
+            summary = "Refresh access token",
+            description = "Exchanges a valid refresh token for a new access token"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Token refreshed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid refresh token"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         TokenResponse response = authService.refreshToken(request);
         return ResponseEntity.ok(response);
@@ -63,6 +74,14 @@ public class AuthController {
 
     @PostMapping("/logout")
     @PreAuthorize("hasRole('USER')")
+    @Operation(
+            summary = "Logout current user",
+            description = "Invalidates the current user's active tokens"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Logged out successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     public ResponseEntity<MessageResponse> logout(HttpServletRequest request) {
         authService.logout(request);
         return ResponseEntity.ok(new MessageResponse("Logged out successfully"));
@@ -97,7 +116,7 @@ public class AuthController {
                     @ApiResponse(responseCode = "500", description = "Internal server error")
             }
     )
-    public ResponseEntity<OptionalAuthResponse> getCurrentUserOptional(HttpServletRequest request) {
+    public ResponseEntity<OptionalAuthResponse> getCurrentUserOptional(@Parameter(description = "HTTP request with optional Authorization header") HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
         OptionalAuthResponse response = authService.getCurrentUserOptional(authorizationHeader);
 

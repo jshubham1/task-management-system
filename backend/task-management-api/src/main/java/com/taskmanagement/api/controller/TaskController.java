@@ -9,6 +9,11 @@ import com.taskmanagement.api.enums.TaskPriority;
 import com.taskmanagement.api.enums.TaskStatus;
 import com.taskmanagement.api.security.UserPrincipal;
 import com.taskmanagement.api.service.TaskService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,20 +30,29 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('USER')")
 @CrossOrigin(origins = "${app.cors.allowed-origins}")
+@Tag(name = "Tasks", description = "Task management endpoints")
 public class TaskController {
     private final TaskService taskService;
 
+    @Operation(
+            summary = "List tasks",
+            description = "Retrieve paginated tasks for the authenticated user with optional filters"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Tasks retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @GetMapping
     public ResponseEntity<Page<TaskResponse>> getTasks(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDirection,
-            @RequestParam(required = false) TaskStatus status,
-            @RequestParam(required = false) TaskPriority priority,
-            @RequestParam(required = false) UUID projectId,
-            @RequestParam(required = false) String search) {
+            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort by field") @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Sort direction: asc|desc") @RequestParam(defaultValue = "desc") String sortDirection,
+            @Parameter(description = "Filter by task status") @RequestParam(required = false) TaskStatus status,
+            @Parameter(description = "Filter by task priority") @RequestParam(required = false) TaskPriority priority,
+            @Parameter(description = "Filter by project ID") @RequestParam(required = false) UUID projectId,
+            @Parameter(description = "Search text in title/description") @RequestParam(required = false) String search) {
 
         TaskFilterRequest filter = TaskFilterRequest.builder()
                 .page(page)
@@ -55,14 +69,26 @@ public class TaskController {
         return ResponseEntity.ok(tasks);
     }
 
+    @Operation(summary = "Get task by ID", description = "Retrieve a single task by its ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Task not found"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @GetMapping("/{taskId}")
     public ResponseEntity<TaskResponse> getTask(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @PathVariable UUID taskId) {
+            @Parameter(description = "Task ID") @PathVariable UUID taskId) {
         TaskResponse task = taskService.getTask(currentUser.getId(), taskId);
         return ResponseEntity.ok(task);
     }
 
+    @Operation(summary = "Create task", description = "Create a new task for the authenticated user")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Task created successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation failed"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @PostMapping
     public ResponseEntity<TaskResponse> createTask(
             @AuthenticationPrincipal UserPrincipal currentUser,
@@ -71,19 +97,32 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CREATED).body(task);
     }
 
+    @Operation(summary = "Update task", description = "Update an existing task by ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Validation failed"),
+            @ApiResponse(responseCode = "404", description = "Task not found"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @PutMapping("/{taskId}")
     public ResponseEntity<TaskResponse> updateTask(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @PathVariable UUID taskId,
+            @Parameter(description = "Task ID") @PathVariable UUID taskId,
             @Valid @RequestBody TaskUpdateRequest request) {
         TaskResponse task = taskService.updateTask(currentUser.getId(), taskId, request);
         return ResponseEntity.ok(task);
     }
 
+    @Operation(summary = "Delete task", description = "Delete a task by ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Task deleted successfully"),
+            @ApiResponse(responseCode = "404", description = "Task not found"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
     @DeleteMapping("/{taskId}")
     public ResponseEntity<MessageResponse> deleteTask(
             @AuthenticationPrincipal UserPrincipal currentUser,
-            @PathVariable UUID taskId) {
+            @Parameter(description = "Task ID") @PathVariable UUID taskId) {
         taskService.deleteTask(currentUser.getId(), taskId);
         return ResponseEntity.ok(new MessageResponse("Task deleted successfully"));
     }
