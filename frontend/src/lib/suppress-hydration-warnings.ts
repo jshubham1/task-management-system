@@ -2,7 +2,7 @@
 * Suppress hydration warnings in development
 * This is specifically for browser extension interference
 */
-exportfunctionsuppressHydrationWarnings() {
+export function suppressHydrationWarnings(): void {
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     const originalError = console.error;
     console.error = (...args) => {
