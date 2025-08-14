@@ -44,3 +44,4 @@ docker/*.log
 # ---- Test/Reports ----
 coverage/
 reports/
+/frontend/.next/
