@@ -49,33 +49,32 @@ flowchart LR
     U[User Browser]
   end
 
-  subgraph Frontend [Next.js (frontend)]
-    FE[Next.js App\nReact 19 + Tailwind\nReact Query]
+  subgraph Frontend
+    FE[Next.js App<br/>React 19 + Tailwind<br/>React Query]
   end
 
-  subgraph Edge [Optional Nginx]
+  subgraph Edge
     NX[Nginx Reverse Proxy]
   end
 
-  subgraph API [Spring Boot (backend/task-management-api)]
-    SB[Spring Boot 3.5\nWeb + Security + Validation\nOpenAPI + Mail]
-    SEC[JWT Security\nAuth Filters]
+  subgraph API
+    SB[Spring Boot 3.5<br/>Web + Security + Validation<br/>OpenAPI + Mail]
+    SEC[JWT Security<br/>Auth Filters]
     SVC[Services]
     REPO[JPA Repositories]
   end
 
-  subgraph DB [PostgreSQL]
-    PG[(task_management)]
+  subgraph DB
+    PG[(PostgreSQL<br/>task_management)]
   end
 
   U --> FE
-  FE -- HTTPS/REST --> NX
-  FE -- HTTPS/REST --> SB
-  NX -- Proxy --> SB
+  FE -->|HTTPS/REST| NX
+  FE -->|HTTPS/REST| SB
+  NX -->|Proxy| SB
   SB --> SEC
   SB --> SVC --> REPO --> PG
-
-  SEC -. issues/verifies .- FE
+  SEC -. "issues/verifies tokens" .- FE
 ```
 
 Runtime topology (Docker):
