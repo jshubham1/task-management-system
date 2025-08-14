@@ -28,7 +28,7 @@ This repository contains:
 
 - backend/task-management-api: Spring Boot REST API using JPA/Hibernate, JWT security, Mail, and OpenAPI.
 - frontend: Next.js 15 (React 19) app styled with Tailwind CSS and modern UI primitives.
-- docker-compose.yml: Orchestrates PostgreSQL, backend API, optional frontend, and optional Nginx.
+- docker-compose.yml: Orchestrates PostgreSQL, backend API, and the Next.js frontend.
 
 ## Key Features
 
@@ -53,10 +53,6 @@ flowchart LR
     FE[Next.js App<br/>React 19 + Tailwind<br/>React Query]
   end
 
-  subgraph Edge
-    NX[Nginx Reverse Proxy]
-  end
-
   subgraph API
     SB[Spring Boot 3.5<br/>Web + Security + Validation<br/>OpenAPI + Mail]
     SEC[JWT Security<br/>Auth Filters]
@@ -69,9 +65,7 @@ flowchart LR
   end
 
   U --> FE
-  FE -->|HTTPS/REST| NX
   FE -->|HTTPS/REST| SB
-  NX -->|Proxy| SB
   SB --> SEC
   SB --> SVC --> REPO --> PG
   SEC -. "issues/verifies tokens" .- FE
@@ -81,12 +75,10 @@ Runtime topology (Docker):
 
 - postgres:15 stores data in named volume `postgres_data`
 - backend `task_management_api` exposes 8080, depends on db health
-- optional frontend exposes 4200 (compose references an Angular path; see note below)
-- optional Nginx exposes 80/443 and proxies to backend/frontend
+- frontend (Next.js) exposes 3000
 
-Note: docker-compose currently points frontend context to `./frontend/task-management-ui` (Angular). This repo’s
-frontend is Next.js under `./frontend`. If you intend to run the frontend via Compose, update the `frontend` service
-context and ports accordingly.
+Note: This project uses a Next.js frontend under `./frontend`. The Compose file is configured to build and run it on
+port 3000.
 
 ## Tech Stack
 
@@ -96,7 +88,7 @@ context and ports accordingly.
 - Auth: JSON Web Tokens (jjwt)
 - Docs: springdoc-openapi
 - Build tools: Maven, Node.js
-- Containerization: Docker, Docker Compose, optional Nginx
+- Containerization: Docker, Docker Compose
 
 ## Project Structure
 
@@ -194,11 +186,9 @@ Environment variables
 3) Services
     - API: http://localhost:8080
     - Postgres: localhost:5432
-    - Nginx (optional): http://localhost
-    - Frontend (if configured in compose): http://localhost:4200 or http://localhost:3000 (Next.js)
+   - Frontend: http://localhost:3000
 
-Adjust compose variables as needed. If using Next.js frontend, update the `frontend` service to use `./frontend` context
-and expose port 3000.
+Adjust compose variables as needed.
 
 ## Environments & Configuration
 
@@ -233,11 +223,11 @@ in the backend module.
 
 - Backend cannot connect to DB inside Docker:
     - Ensure `SPRING_DATASOURCE_URL` points to the service name defined in Compose (`db` by default). The sample
-      shows `my_postgres`; set it to `jdbc:postgresql://db:5432/task_management` for Compose networking.
+      shows `db`; use `jdbc:postgresql://db:5432/task_management` for Compose networking.
 - 404 on Swagger UI:
     - Verify springdoc dependency and that the app is running on 8080
 - CORS errors from the browser:
     - Ensure the frontend origin is listed in `APP_CORS_ALLOWED_ORIGINS`
-- Compose frontend mismatch:
-    - Update the `frontend` service context to `./frontend` for Next.js or provide an Angular app
-      under `./frontend/task-management-ui`.
+- Frontend build/runtime issues:
+  - Ensure `NEXT_PUBLIC_API_BASE_URL` is set correctly (e.g., http://localhost:8080)
+  - If using Docker, the frontend listens on port 3000; ensure it isn't occupied by another process

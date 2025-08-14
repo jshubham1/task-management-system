@@ -1,0 +1,14 @@
+node_modules
+.next/cache
+.next/standalone
+.next/static
+npm-debug.log
+yarn-error.log
+.DS_Store
+.git
+.gitignore
+.eslint*
+.prettier*
+.vscode
+coverage
+playwright-report
