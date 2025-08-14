@@ -1,2 +1,46 @@
+# ---- OS / Editor ----
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# ---- Root logs & env ----
+logs/
+*.log
+.env
+.env.*
+
+# ---- Frontend (Next.js) ----
 /frontend/node_modules/
 /frontend/.next/
+/frontend/.next/cache/
+/frontend/out/
+/frontend/.turbo/
+/frontend/coverage/
+/frontend/npm-debug.log*
+/frontend/yarn-error.log*
+/frontend/pnpm-debug.log*
+
+# ---- Frontend build artifacts when using Docker multi-stage ----
+/frontend/.next/standalone/
+/frontend/.next/static/
+
+# ---- Backend (Java/Maven) ----
+/backend/task-management-api/target/
+/backend/task-management-api/.classpath
+/backend/task-management-api/.project
+/backend/task-management-api/.settings/
+/backend/task-management-api/*.log
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# ---- Docker ----
+*.pid
+.docker/
+docker/*.log
+
+# ---- Test/Reports ----
+coverage/
+reports/
