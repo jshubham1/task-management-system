@@ -1,31 +1,53 @@
 import {
     UserResponse,
-TaskResponse,
-TaskStatus,
-ProjectResponse,
-DashboardSummaryResponse,
-TaskStatsResponse,
-ProjectStatsResponse,
-TaskFilterRequest,
-ProjectFilters,
-LoginRequest,
-RegisterRequest,
-TaskCreateRequest,
-ProjectCreateRequest,
-ApiResponse,
-LoginResponse,
-AuthResponse,
-TaskListResponse,
-ProjectListResponse,
-ProjectSummaryListResponse,
-ProjectSummaryResponse,
-RecentActivityResponse,
-MessageResponse,
-TaskUpdateRequest,
-ProjectUpdateRequest
-}from '@/types'
+    TaskResponse,
+    TaskStatus,
+    ProjectResponse,
+    DashboardSummaryResponse,
+    TaskStatsResponse,
+    ProjectStatsResponse,
+    TaskFilterRequest,
+    ProjectFilters,
+    LoginRequest,
+    RegisterRequest,
+    TaskCreateRequest,
+    ProjectCreateRequest,
+    ApiResponse,
+    LoginResponse,
+    AuthResponse,
+    TaskListResponse,
+    ProjectListResponse,
+    ProjectSummaryListResponse,
+    ProjectSummaryResponse,
+    RecentActivityResponse,
+    MessageResponse,
+    TaskUpdateRequest,
+    ProjectUpdateRequest
+} from '@/types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
+
+function extractMessage(body: unknown): string | undefined {
+  if (typeof body === 'object' && body !== null) {
+    const rec = body as Record<string, unknown>
+    const msg = rec.message
+    if (typeof msg === 'string') return msg
+  }
+  return undefined
+}
+
+// Exported error type so UI can distinguish and read server-provided details
+export class HttpError extends Error {
+  status: number
+  body: unknown
+  constructor(status: number, body: unknown, message?: string) {
+    const derived = message || extractMessage(body) || `HTTP ${status}`
+    super(derived)
+    this.name = 'HttpError'
+    this.status = status
+    this.body = body
+  }
+}
 
 class ApiClient {
 private baseURL: string
@@ -59,8 +81,18 @@ constructor(baseURL: string) {
     })
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Network error' }))
-      throw new Error(error.message || `HTTP ${response.status}`)
+      let parsed: unknown = null
+      try {
+        parsed = await response.json()
+      } catch {
+        try {
+          const text = await response.text()
+          parsed = text
+        } catch {
+          parsed = null
+        }
+      }
+      throw new HttpError(response.status, parsed)
     }
 
     return response.json()
@@ -122,8 +154,17 @@ constructor(baseURL: string) {
       })
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Network error' }))
-        throw new Error(error.message || `HTTP ${response.status}`)
+        let parsed: unknown = null
+        try {
+          parsed = await response.json()
+        } catch {
+          try {
+            parsed = await response.text()
+          } catch {
+            parsed = null
+          }
+        }
+        throw new HttpError(response.status, parsed)
       }
 
       const loginResponse: LoginResponse = await response.json()
@@ -156,8 +197,17 @@ constructor(baseURL: string) {
       if (this.token) headers.Authorization = `Bearer ${this.token}`
       const res = await fetch(url, { method: 'GET', headers })
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ message: 'Network error' }))
-        throw new Error(error.message || `HTTP ${res.status}`)
+        let parsed: unknown = null
+        try {
+          parsed = await res.json()
+        } catch {
+          try {
+            parsed = await res.text()
+          } catch {
+            parsed = null
+          }
+        }
+        throw new HttpError(res.status, parsed)
       }
       return res.json()
     },

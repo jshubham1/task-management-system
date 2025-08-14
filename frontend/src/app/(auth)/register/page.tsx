@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useAuth } from '@/hooks/use-auth'
+import { HttpError } from '@/lib/api'
 import { registerSchema, type RegisterForm } from '@/lib/validations'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -40,7 +41,35 @@ export default function RegisterPage() {
       toast.success('Account created successfully! Please sign in.')
       router.push('/login')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Registration failed')
+      // Map backend validation errors like { username: "...", email: "..." }
+      if (error instanceof HttpError && error.status === 400 && error.body && typeof error.body === 'object') {
+        const body = error.body as Record<string, unknown>
+        let fieldErrorHandled = false
+        const fieldMap: Record<string, keyof RegisterForm> = {
+          username: 'username',
+          email: 'email',
+          firstName: 'firstName',
+          lastName: 'lastName',
+          password: 'password',
+          confirmPassword: 'confirmPassword',
+        }
+        for (const [key, value] of Object.entries(body)) {
+          const field = fieldMap[key]
+          if (field && typeof value === 'string' && value.trim().length > 0) {
+            form.setError(field, { type: 'server', message: value })
+            fieldErrorHandled = true
+          }
+        }
+        if (!fieldErrorHandled) {
+          // Fallback to a general error message
+          const msg = (typeof (body as Record<string, unknown>).message === 'string')
+            ? String((body as Record<string, unknown>).message)
+            : 'Registration failed'
+          toast.error(msg)
+        }
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Registration failed')
+      }
     }
   }
 

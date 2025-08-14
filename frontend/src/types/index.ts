@@ -1,49 +1,49 @@
 // Base types
-exporttypeUUID = string
+export type UUID = string
 
-exportinterfaceBaseEntity {
-  id:UUID
-  createdAt:string
-  updatedAt:string
+export interface BaseEntity {
+  id: UUID
+  createdAt: string
+  updatedAt: string
 }
 
-exportinterfacePaginatedResponse < T= unknown> {
-content: T[]
-pageable: Pageable
-totalElements: number
-totalPages: number
-first: boolean
-last: boolean
-size: number
-number: number
-numberOfElements: number
-empty: boolean
+export interface PaginatedResponse<T = unknown> {
+  content: T[]
+  pageable: Pageable
+  totalElements: number
+  totalPages: number
+  first: boolean
+  last: boolean
+  size: number
+  number: number
+  numberOfElements: number
+  empty: boolean
 }
 
 export interface Pageable {
-pageNumber: number
-pageSize: number
-sort: Sort
+  pageNumber: number
+  pageSize: number
+  sort: Sort
 }
 
 export interface Sort {
-sorted: boolean
-direction: 'ASC' | 'DESC'
-property: string
+  sorted: boolean
+  direction: 'ASC' | 'DESC'
+  property: string
 }
 
-export interface ApiResponse < T = unknown> {
-data: T
-message?: string
-success: boolean
-timestamp: string
+export interface ApiResponse<T = unknown> {
+  data: T
+  message?: string
+  success: boolean
+  timestamp: string
 }
 
 export interface MessageResponse {
-message: string
-success: boolean
-timestamp: string
-code?: string
+  message: string
+  success: boolean
+  timestamp: string
+  code?: string
 }
 
 // Enums
